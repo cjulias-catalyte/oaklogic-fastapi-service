@@ -3,7 +3,7 @@
 
 # Environment Variables
 .env
-__pycache__/
 
+__pycache__/
 # Test Results
 .pytest_cache/
