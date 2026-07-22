@@ -1,0 +1,9 @@
+# Virtual Environments
+.venv/
+
+# Environment Variables
+.env
+__pycache__/
+
+# Test Results
+.pytest_cache/
