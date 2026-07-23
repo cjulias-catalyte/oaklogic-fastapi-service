@@ -1,11 +1,14 @@
-from fastapi import FastAPI
 from src.models.product import Product
 
-app = FastAPI()
 
-products = []
+class ProductRepository:
+    def __init__(self):
+        self._products: list[Product] = []
 
-@app.post("/products", status_code=201)
-def create_product(product: Product):
-    products.append(product)
-    return product 
+    def add_product(self, product: Product) -> None:
+        self._products.append(product)
+
+    def get_all(self) -> list[Product]:
+        return self._products
+
+
