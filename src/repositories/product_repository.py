@@ -1,5 +1,3 @@
-from fastapi import FastAPI
-
 from src.models.product import Product
 
 
