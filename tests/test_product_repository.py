@@ -50,3 +50,13 @@ def test_create_product_no_data():
     response = client.post("/products")
 
     assert response.status_code == 422
+
+def test_search_products_by_name():
+    response = client.get("/products/search?name=Basil")
+
+    assert response.status_code == 200
+
+    products = response.json()
+
+    assert len(products) > 0
+    assert products[0]["name"] == "Basil Plant - 4in Pot"
