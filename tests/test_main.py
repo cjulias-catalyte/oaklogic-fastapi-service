@@ -13,3 +13,10 @@ def test_say_hello():
     response = client.get("/hello/Bob")
     assert response.status_code == 200
     assert response.json() == {"message": "Hello, Bob!"}
+
+
+def test_get_products():
+    response = client.get("/products")
+    assert response.status_code == 200
+    assert response.json()[0]["name"] == "soil"
+    assert response.json()[0]["unit"] == "bag"
