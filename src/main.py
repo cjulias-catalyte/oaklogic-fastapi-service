@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 
 from src.models.product import Product
-from src.repositories.product_repository import product_repository
+from src.repositories.product_repository import ProductRepository
 
 app = FastAPI()
+
+products = ProductRepository()
 
 
 @app.get("/")
@@ -18,10 +20,9 @@ async def say_hello(name: str):
 
 @app.post("/products")
 def create_product(product: Product):
-    product_repository.add_product(product)
+    products.add_product(product)
     return product
-
 
 @app.get("/products")
 async def get_products():
-    return product_repository.get_all()
+    return products.get_all()
