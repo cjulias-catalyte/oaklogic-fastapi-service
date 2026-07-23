@@ -35,3 +35,5 @@ def search_products(name: str, unit: str = "each"):
         results = [p for p in results if p.unit.lower() == unit.lower()]
 
     return results
+
+# added search fucntion
