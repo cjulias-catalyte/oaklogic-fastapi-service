@@ -10,4 +10,5 @@ class ProductRepository:
 
     def get_all(self) -> list[Product]:
         return self._products
-    
+
+
