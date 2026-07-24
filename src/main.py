@@ -18,7 +18,7 @@ async def say_hello(name: str):
     return {"message": f"Hello, {name}!"}
 
 
-@app.post("/products", status_code=201)
+@app.post("/products",status_code=201)
 def create_product(product: Product):
     products.add_product(product)
     return product
@@ -35,3 +35,5 @@ def search_products(name: str, unit: str = "each"):
         results = [p for p in results if p.unit.lower() == unit.lower()]
 
     return results
+
+# added search fucntion
