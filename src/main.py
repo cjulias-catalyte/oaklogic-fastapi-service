@@ -1,8 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import models
+from database import engine, SessionLocal
+from sqlalchemy.orm import Session
 from src.models.product import Product
 from src.repositories.product_repository import ProductRepository
 
 app = FastAPI()
+models.Base.metadata.drop_all(bind=engine)
+models.Base.metadata.create_all(bind=engine)
+
 products = ProductRepository()
 
 @app.get("/")

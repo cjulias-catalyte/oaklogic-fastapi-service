@@ -1,7 +1,7 @@
 import pytest
 
 from src.models.product import Product
-from src.repositories.reposoritory_product import add_product, get_all_products, _reset_store
+from src.repositories.product_repository import add_product, get_all_products, _reset_store
 
 
 @pytest.fixture(autouse=True)
