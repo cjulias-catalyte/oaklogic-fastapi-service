@@ -1,24 +1,19 @@
 from fastapi import FastAPI
-
 from src.models.product import Product
 from src.repositories.product_repository import ProductRepository
 
 app = FastAPI()
-
 products = ProductRepository()
-
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
-
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello, {name}!"}
 
-
-@app.post("/products")
+@app.post("/products",status_code=201)
 def create_product(product: Product):
     products.add_product(product)
     return product
@@ -30,10 +25,6 @@ async def get_products():
 @app.get("/products/search")
 def search_products(name: str, unit: str = "each"):
     results = [p for p in products.get_all() if name.lower() in p.name.lower()]
-
-    if unit is not None:
-        results = [p for p in results if p.unit.lower() == unit.lower()]
-
+    # Since unit defaults to "each", it will never be None.
+    results = [p for p in results if p.unit.lower() == unit.lower()]
     return results
-
-# added search fucntion
