@@ -13,7 +13,8 @@ async def root():
 async def say_hello(name: str):
     return {"message": f"Hello, {name}!"}
 
-@app.post("/products",status_code=201)
+
+@app.post("/products", status_code=201)
 def create_product(product: Product):
     products.add_product(product)
     return product
@@ -25,6 +26,8 @@ async def get_products():
 @app.get("/products/search")
 def search_products(name: str, unit: str = "each"):
     results = [p for p in products.get_all() if name.lower() in p.name.lower()]
-    # Since unit defaults to "each", it will never be None.
-    results = [p for p in results if p.unit.lower() == unit.lower()]
+
+    if unit is not None:
+        results = [p for p in results if p.unit.lower() == unit.lower()]
+
     return results

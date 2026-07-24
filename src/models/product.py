@@ -1,6 +1,7 @@
-from pydantic import BaseModel,Field
+from pydantic import BaseModel, Field
 
 class Product(BaseModel):
+    id: int
     name: str
     unit: str
     cost_per_unit: float = Field(ge=0)
