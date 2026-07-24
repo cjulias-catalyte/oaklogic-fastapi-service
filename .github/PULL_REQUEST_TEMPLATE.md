@@ -8,12 +8,12 @@
 
 ## Type of Change
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor / code cleanup
-- [ ] Documentation update
-- [ ] Tests only
-- [ ] Other (describe below)
+- [] Bug fix
+- [] New feature
+- [] Refactor / code cleanup
+- [] Documentation update
+- [] Tests only
+- [] Other (describe below)
 
 ## Changes Made
 
@@ -25,22 +25,14 @@
 ## How Has This Been Tested?
 
 <!-- Describe how you verified the change works. Include test commands if relevant. -->
-- [ ] Unit tests added/updated
-- [ ] Ran full test suite locally (`pytest`)
-- [ ] Manually tested the affected functionality
+- [] Unit tests added/updated
+- [] Ran full test suite locally (`pytest`)
+- [] Manually tested the affected functionality
 
 ## Checklist
 
-- [ ] My code follows the project's style guidelines
-- [ ] I have added docstrings/comments where needed
-- [ ] I have updated documentation if applicable
-- [ ] My changes generate no new warnings or errors
-- [ ] I have rebased/merged the latest changes from the base branch
-
-## Screenshots (if applicable)
-
-<!-- Drag and drop images here -->
-
-## Additional Notes
-
-<!-- Anything else reviewers should know -->
+- [] My code follows the project's style guidelines
+- [] I have added docstrings/comments where needed
+- [] I have updated documentation if applicable
+- [] My changes generate no new warnings or errors
+- [] I have rebased/merged the latest changes from the base branch
