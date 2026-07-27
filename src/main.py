@@ -71,3 +71,12 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 @app.get("/products")
 def get_products(db: Session = Depends(get_db)):
     return db.query(Product).all()
+
+
+def search_products(db: Session, name: str):
+    # Returns all matches or empty list
+    return db.query(Product).filter(Product.name.ilike(f"%{name}%")).all()
+
+def get_product(db: Session, product_id: int):
+    # Returns the item or None
+    return db.query(Product).filter(Product.id == product_id).first()
