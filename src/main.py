@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Response, status, Depends, HTTPException
 from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
@@ -11,7 +11,6 @@ Base.metadata.create_all(bind=engine)
 
 products = ProductRepository()
 update_repository = ProductUpdateRepository()
-
 
 @app.get("/")
 async def root():
@@ -56,44 +55,42 @@ def db_check(db: Session = Depends(get_db)):
 
 @app.post("/products", response_model=ProductSchema, status_code=201)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
-    db_product = Product(
-        id=product_data.id,
-        name=product_data.name,
-        unit=product_data.unit,
-        cost_per_unit=product_data.cost_per_unit,
-        price_per_unit=product_data.price_per_unit,
-        quantity_in_stock=product_data.quantity_in_stock,
-    )
-
-    db.add(db_product)    
-    db.commit()   
-    db.refresh(db_product)
-
-    return db_product
+    repository = ProductRepository(db)
+    return repository.create_new_product(product_data)
 
 
-@app.get("/products")
+@app.get("/products", response_model=list[ProductSchema])
 def get_products(db: Session = Depends(get_db)):
-    return db.query(Product).all()
+    repository = ProductRepository(db)
+    return repository.get_all_products()
 
-@app.patch("/products/update", response_model=ProductSchema, status_code=202)
-def update_product(
-    product_data: ProductSchema,
-    product_id: int | None = None,
-    product_name: str | None = None,
-    db: Session = Depends(get_db)
-):
-    product = update_repository.update_product(
-        db=db,
-        product_data=product_data,
-        product_id=product_id,
-        product_name=product_name
-    )
+@app.get("/products/search", response_model=ProductSchema)
+def get_product(id: int | None = None, name: str | None = None, db: Session = Depends(get_db)):
+    repository = ProductRepository(db)
+
+    if id is not None:
+        product = repository.get_product_by_id(id)
+    elif name is not None:
+        product = repository.get_product_by_name(name)
+    else:
+        raise HTTPException(status_code=400, detail="Must provide id or name")
 
     if product is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Product not found"
-        )
+        raise HTTPException(status_code=404, detail="Product not found")
 
     return product
+@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(
+    product_id: int,
+    db:Session = Depends(get_db),
+):
+    repository = ProductRepository(db)
+    product_was_deleted = repository.delete_product(product_id)
+
+    if not product_was_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_id} was not found",
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
