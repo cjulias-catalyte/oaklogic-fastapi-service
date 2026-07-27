@@ -1,14 +1,35 @@
-from src.models.product import Product
+from src.models.product import Product, ProductSchema
+from sqlalchemy.orm import Session
 
 
 class ProductRepository:
-    def __init__(self):
-        self._products: list[Product] = []
+    # def __init__(self):
+    #     self._products: list[Product] = []
 
-    def add_product(self, product: Product) -> None:
-        self._products.append(product)
+    # def add_product(self, product: Product) -> None:
+    #     self._products.append(product)
 
-    def get_all(self) -> list[Product]:
-        return self._products
+   
+
+    def __init__(self, db: Session):
+        self.db = db
+    
+    def create_new_product(self, product_data: ProductSchema) -> Product:
+        db_product = Product(
+            id=product_data.id,
+            name=product_data.name,
+            unit=product_data.unit,
+            cost_per_unit=product_data.cost_per_unit,
+            price_per_unit=product_data.price_per_unit,
+            quantity_in_stock=product_data.quantity_in_stock,
+        )
+
+        self.db.add(db_product)
+        self.db.commit()
+        self.db.refresh(db_product)
+        return db_product
+
+    def get_all_products(self) -> list[Product]:
+        return self.db.query(Product).all()
 
 
