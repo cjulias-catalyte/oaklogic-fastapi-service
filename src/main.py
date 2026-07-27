@@ -76,7 +76,7 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 def get_products(db: Session = Depends(get_db)):
     return db.query(Product).all()
 
-@app.patch("/products/update", response_model=ProductSchema)
+@app.patch("/products/update", response_model=ProductSchema, status_code=202)
 def update_product(
     product_data: ProductSchema,
     product_id: int | None = None,
