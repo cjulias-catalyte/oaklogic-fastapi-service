@@ -4,12 +4,13 @@ from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
 from src.models.product import Product, ProductSchema
 from src.repositories.product_repository import ProductRepository
-
+from src.repositories.Update_Product_Repository import ProductUpdateRepository
 app = FastAPI()
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 products = ProductRepository()
+update_repository = ProductUpdateRepository()
 
 
 @app.get("/")
@@ -74,3 +75,25 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 @app.get("/products")
 def get_products(db: Session = Depends(get_db)):
     return db.query(Product).all()
+
+@app.patch("/products/update", response_model=ProductSchema)
+def update_product(
+    product_data: ProductSchema,
+    product_id: int | None = None,
+    product_name: str | None = None,
+    db: Session = Depends(get_db)
+):
+    product = update_repository.update_product(
+        db=db,
+        product_data=product_data,
+        product_id=product_id,
+        product_name=product_name
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    return product

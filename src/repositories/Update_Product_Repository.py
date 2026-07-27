@@ -41,6 +41,7 @@ class ProductUpdateRepository:
         if product is None:
             return None
 
+        product.id = product_data.id
         product.name = product_data.name
         product.unit = product_data.unit
         product.cost_per_unit = product_data.cost_per_unit
