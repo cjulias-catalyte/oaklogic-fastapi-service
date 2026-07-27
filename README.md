@@ -57,28 +57,7 @@ pip install -r requirements.txt
 
 ## Running the App
 
-In the `main.py` with a FastAPI app instance and at least these two routes:
-
-```python
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"message": "Hello World"}
-
-@app.get("/hello/{name}")
-def read_hello(name: str):
-    return {"message": f"Hello, {name}!"}
-```
-
-Start the server with Uvicorn from the src directory:
-
-```bash
-uvicorn main:app --reload
-```
-Or, start the server with Uvicorn from the root directory:
+The FastAPI application is located in `src/main.py` and can be started with Uvicorn from the root directory:
 
 ```bash
 uvicorn src.main:app --reload
@@ -90,49 +69,92 @@ Once running, the app should be available at:
 http://127.0.0.1:8000
 ```
 
-You should be able to confirm it's working two ways:
+## Day 1: Basic FastAPI Endpoints
 
-- **Browser** — visiting `http://127.0.0.1:8000/` returns a `200` status with the exact body `{"message": "Hello World"}`. Visiting `http://127.0.0.1:8000/hello/Sam` returns a `200` with a body that includes `"Sam"`. Try at least two different names to confirm the path parameter works generally, not just for one value.
-- **Postman** — send the same requests from Postman so you can inspect the request, response body, and status code for each. Save both requests into a Postman collection.
+Day 1 introduced the first FastAPI routes and established the project structure.
 
-## Running Tests
+Endpoints added on Day 1:
 
-From the gitbash terminal enter:
+- `GET /` — returns a simple hello message
+- `GET /hello/{name}` — returns a personalized greeting
+
+This day was about learning how FastAPI routes work and how to run the app locally.
+
+## Day 2: Request/Response Basics & Pydantic
+
+Day 2 added the first product domain concept using Pydantic and in-memory state.
+
+Endpoints added on Day 2:
+
+- `POST /products` — accepts a `Product` request body and stores it in memory
+- `GET /products` — returns every product submitted so far
+- `GET /products/search` — searches products by required `name` query and optional `unit` query parameter
+
+Example `Product` request body:
+
+```json
+{
+  "name": "Basil Plant - 4in Pot",
+  "unit": "each",
+  "cost_per_unit": 1.75,
+  "price_per_unit": 4.99,
+  "quantity_in_stock": 40
+}
+```
+
+Day 2 also introduced validation rules for the `Product` model using Pydantic.
+
+Validation rules:
+
+- `cost_per_unit` must be greater than or equal to 0
+- `price_per_unit` must be greater than or equal to 0
+- `quantity_in_stock` must be greater than or equal to 0
+
+The original Day 2 design stored products in a Python list inside the running process, so data would disappear when the server restarted.
+
+## Day 3: Postgres & SQLAlchemy Connection
+
+Day 3 replaces in-memory storage with a PostgreSQL database and SQLAlchemy model mapping.
+
+Endpoints supported now:
+
+- `POST /products` — accepts a `Product` payload and stores it in Postgres
+- `GET /products` — returns every product stored in Postgres
+- `GET /products/search` — searches products by required `name` query and optional `unit` query parameter
+- `GET /db-check` — verifies the PostgreSQL connection and returns a product count
+
+Database dependencies:
 
 ```bash
-pytest
-```
-Example output of the completed pytest:
-
-```
-====================== test session starts ======================
-platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0
-rootdir: (File Path)
-configfile: pyproject.toml
-testpaths: tests
-plugins: anyio-4.14.2
-collected 2 items
-
-tests\test_main.py ..                                                                                                                                                             [100%]
-
-====================== 2 passed in 0.42s ======================
+pip install sqlalchemy psycopg2-binary
 ```
 
-## Project Structure
+The app is now configured to connect to PostgreSQL through a shared database module. The same engine and SQLAlchemy `Base` class are used across the application.
 
-```
-project-root/
-├── src/
-│   ├── __init__.py
-│   └── main.py
-│   
-├── tests/
-|   ├── __init__.py
-│   └── test_main.py
-|
-├── requirements.txt
-├── .gitignore
-├── README.md
-└── pyproject.toml
-```
+### Schema strategy
+
+During development, the app rebuilds its schema on startup by dropping and recreating tables from the SQLAlchemy models.
+
+### Database check endpoint
+
+Use `GET /db-check` to confirm the app can talk to Postgres and return the current number of products.
+
+### Validation
+
+The `Product` model continues to enforce business rules via Pydantic:
+
+- `cost_per_unit` must be greater than or equal to 0
+- `price_per_unit` must be greater than or equal to 0
+- `quantity_in_stock` must be greater than or equal to 0
+
+Invalid requests return a `422` response with details about the failing field.
+
+## Confirming the app
+
+You should be able to confirm the app works by:
+
+- **Browser** — visiting `http://127.0.0.1:8000/` returns a `200` body `{"message": "Hello World"}`
+- **Postman** — sending requests to `/hello/{name}`, `/products`, `/products/search`, and `/db-check`
+
+
 
