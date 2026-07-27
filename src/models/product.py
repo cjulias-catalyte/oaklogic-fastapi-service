@@ -4,7 +4,7 @@ from src.database import Base
 
 
 
-class Product(BaseModel):
+class ProductSchema(BaseModel):
     id: int
     name: str
     unit: str

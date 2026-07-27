@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
-from src.models.product import Product
+from src.models.product import Product, ProductSchema
 from src.repositories.product_repository import ProductRepository
 
 app = FastAPI()
@@ -20,7 +20,7 @@ async def say_hello(name: str):
     return {"message": f"Hello, {name}!"}
 
 @app.post("/products", status_code=201)
-def create_product(product: Product):
+def create_product(product: ProductSchema):
     products.add_product(product)
     return product
 
