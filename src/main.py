@@ -9,11 +9,11 @@ app = FastAPI()
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
-products = ProductRepository()
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
 
 @app.get("/hello/{name}")
 async def say_hello(name: str):
@@ -52,23 +52,11 @@ def db_check(db: Session = Depends(get_db)):
 
 @app.post("/products", response_model=ProductSchema, status_code=201)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
-    db_product = Product(
-        id=product_data.id,
-        name=product_data.name,
-        unit=product_data.unit,
-        cost_per_unit=product_data.cost_per_unit,
-        price_per_unit=product_data.price_per_unit,
-        quantity_in_stock=product_data.quantity_in_stock,
-    )
-
-    db.add(db_product)    
-    db.commit()   
-    db.refresh(db_product)
-
-    return db_product
+    repository = ProductRepository(db)
+    return repository.create_new_product(product_data)
 
 
-@app.get("/products")
+@app.get("/products", response_model=list[ProductSchema])
 def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
@@ -103,20 +91,3 @@ def delete_product(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-<<<<<<< HEAD
-
-# 4. Get ONE product by ID (using the path parameter)
-@app.get("/products/{product_id}", response_model=ProductSchema)
-def get_product_by_id(product_id: int, db: Session = Depends(get_db)):
-    # Query for the specific item
-    product = db.query(Product).filter(Product.id == product_id).first()
-        
-
-# 3. Search products by name (using a query parameter)
-@app.get("/products/search", response_model=list[ProductSchema])
-def search_products(name: str, db: Session = Depends(get_db)):
-    # Query for products where the name matches the provided string
-    products = db.query(Product).filter(Product.name.ilike(f"%{name}%")).all()
-    
-=======
->>>>>>> 85d632d4ffafa8786bfae6aa65440fa4c5d17338
