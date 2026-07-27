@@ -31,5 +31,10 @@ class ProductRepository:
 
     def get_all_products(self) -> list[Product]:
         return self.db.query(Product).all()
+    
+    def get_product_by_id(self, product_id: int) -> Product | None:
+        return self.db.query(Product).filter(Product.id == product_id).first()
 
+    def get_product_by_name(self, name: str) -> Product | None:
+        return self.db.query(Product).filter(Product.name.ilike(f"%{name}%")).first()
 

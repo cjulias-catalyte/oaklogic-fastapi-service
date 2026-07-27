@@ -60,3 +60,19 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
+
+@app.get("/products/search", response_model=ProductSchema)
+def get_product(id: int | None = None, name: str | None = None, db: Session = Depends(get_db)):
+    repository = ProductRepository(db)
+
+    if id is not None:
+        product = repository.get_product_by_id(id)
+    elif name is not None:
+        product = repository.get_product_by_name(name)
+    else:
+        raise HTTPException(status_code=400, detail="Must provide id or name")
+
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return product
