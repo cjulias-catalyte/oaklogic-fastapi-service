@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Response, status, Depends, HTTPException
 from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
@@ -70,13 +70,35 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 
 @app.get("/products")
 def get_products(db: Session = Depends(get_db)):
-    return db.query(Product).all()
+    repository = ProductRepository(db)
+    return repository.get_all_products()
 
+@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(
+    product_id: int,
+    db:Session = Depends(get_db),
+):
+    repository = ProductRepository(db)
+    product_was_deleted = repository.delete_product(product_id)
 
-def search_products(db: Session, name: str):
-    # Returns all matches or empty list
-    return db.query(Product).filter(Product.name.ilike(f"%{name}%")).all()
+    if not product_was_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_id} was not found",
+        )
 
-def get_product(db: Session, product_id: int):
-    # Returns the item or None
-    return db.query(Product).filter(Product.id == product_id).first()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+# 4. Get ONE product by ID (using the path parameter)
+@app.get("/products/{product_id}", response_model=ProductSchema)
+def get_product_by_id(product_id: int, db: Session = Depends(get_db)):
+    # Query for the specific item
+    product = db.query(Product).filter(Product.id == product_id).first()
+        
+
+# 3. Search products by name (using a query parameter)
+@app.get("/products/search", response_model=list[ProductSchema])
+def search_products(name: str, db: Session = Depends(get_db)):
+    # Query for products where the name matches the provided string
+    products = db.query(Product).filter(Product.name.ilike(f"%{name}%")).all()
+    
