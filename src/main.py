@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Response, status, Depends, HTTPException
 from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
@@ -60,3 +60,19 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
+
+@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(
+    product_id: int,
+    db:Session = Depends(get_db),
+):
+    repository = ProductRepository(db)
+    product_was_deleted = repository.delete_product(product_id)
+
+    if not product_was_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_id} was not found",
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
