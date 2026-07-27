@@ -9,7 +9,10 @@ app = FastAPI()
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
+<<<<<<< HEAD
 products = ProductRepository()
+=======
+>>>>>>> 21fff00e22c1342205d96eb2324b8922131fda5f
 
 @app.get("/")
 async def root():
@@ -52,24 +55,13 @@ def db_check(db: Session = Depends(get_db)):
 
 @app.post("/products", response_model=ProductSchema, status_code=201)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
-    db_product = Product(
-        id=product_data.id,
-        name=product_data.name,
-        unit=product_data.unit,
-        cost_per_unit=product_data.cost_per_unit,
-        price_per_unit=product_data.price_per_unit,
-        quantity_in_stock=product_data.quantity_in_stock,
-    )
-
-    db.add(db_product)    
-    db.commit()   
-    db.refresh(db_product)
-
-    return db_product
+    repository = ProductRepository(db)
+    return repository.create_new_product(product_data)
 
 
-@app.get("/products")
+@app.get("/products", response_model=list[ProductSchema])
 def get_products(db: Session = Depends(get_db)):
+<<<<<<< HEAD
     return db.query(Product).all()
 
 
@@ -80,3 +72,7 @@ def search_products(db: Session, name: str):
 def get_product(db: Session, product_id: int):
     # Returns the item or None
     return db.query(Product).filter(Product.id == product_id).first()
+=======
+    repository = ProductRepository(db)
+    return repository.get_all_products()
+>>>>>>> 21fff00e22c1342205d96eb2324b8922131fda5f
