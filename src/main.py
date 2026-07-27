@@ -73,6 +73,21 @@ def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
 
+@app.get("/products/search", response_model=ProductSchema)
+def get_product(id: int | None = None, name: str | None = None, db: Session = Depends(get_db)):
+    repository = ProductRepository(db)
+
+    if id is not None:
+        product = repository.get_product_by_id(id)
+    elif name is not None:
+        product = repository.get_product_by_name(name)
+    else:
+        raise HTTPException(status_code=400, detail="Must provide id or name")
+
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return product
 @app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
     product_id: int,
@@ -88,6 +103,7 @@ def delete_product(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+<<<<<<< HEAD
 
 # 4. Get ONE product by ID (using the path parameter)
 @app.get("/products/{product_id}", response_model=ProductSchema)
@@ -102,3 +118,5 @@ def search_products(name: str, db: Session = Depends(get_db)):
     # Query for products where the name matches the provided string
     products = db.query(Product).filter(Product.name.ilike(f"%{name}%")).all()
     
+=======
+>>>>>>> 85d632d4ffafa8786bfae6aa65440fa4c5d17338
