@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response, status, Depends, HTTPException
+from fastapi import FastAPI, Response, Depends, HTTPException
 from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
