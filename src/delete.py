@@ -3,7 +3,10 @@ from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
 from src.models.product import Product, ProductSchema
+from src.repositories import delete_repository
 from src.repositories.product_repository import ProductRepository
+
+
 
 app = FastAPI()
 Base.metadata.drop_all(bind=engine)
@@ -24,7 +27,7 @@ def delete_product(
     product_id: int,
     db: Session = Depends(get_db),
 ):
-    deleted_product = product_repository.delete_product(
+    deleted_product = delete_repository.delete_product(
         db,
         product_id,
     )
