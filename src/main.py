@@ -4,7 +4,7 @@ from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
 from src.models.product import Product, ProductSchema
 from src.repositories.product_repository import ProductRepository
-from src.repositories.Update_Product_Repository import ProductUpdateRepository
+from src.repositories.product_repository import ProductUpdateRepository
 app = FastAPI()
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -103,10 +103,8 @@ def update_product(
     """
     Updates an existing product using its ID or name as the identifier.
     """
-
     product_id = None
     product_name = None
-
     # Determine whether identifier is an ID or name
     if identifier.isdigit():
         product_id = int(identifier)
@@ -116,7 +114,6 @@ def update_product(
                 status_code=400,
                 detail="Product ID must be greater than 0."
             )
-
     else:
         product_name = identifier.strip()
 
@@ -125,25 +122,21 @@ def update_product(
                 status_code=400,
                 detail="Product name cannot be empty."
             )
-
     # Make sure at least one identifier is provided
     if product_id is None and product_name is None:
         raise HTTPException(
             status_code=400,
             detail="Provide either product_id or product_name."
         )
-
     product = update_repository.update_product(
         db=db,
         product_data=product_data,
         product_id=product_id,
         product_name=product_name
     )
-
     if product is None:
         raise HTTPException(
             status_code=404,
             detail="Product not found"
         )
-
     return product
