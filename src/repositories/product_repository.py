@@ -1,58 +1,43 @@
-from src.models.product import Product, ProductSchema
 from sqlalchemy.orm import Session
+from src.models.product import Product, ProductSchema
 
 class ProductRepository:
-    def __init__(self):
-        self._products: list[Product] = []
-
-    # def add_product(self, product: Product) -> None:
-    #     self._products.append(product)
-
-   
-
     def __init__(self, db: Session):
         self.db = db
-    
-    def create_new_product(self, product_data: ProductSchema) -> Product:
-        db_product = Product(
-            id=product_data.id,
-            name=product_data.name,
-            unit=product_data.unit,
-            cost_per_unit=product_data.cost_per_unit,
-            price_per_unit=product_data.price_per_unit,
-            quantity_in_stock=product_data.quantity_in_stock,
-        )
 
+    def create_new_product(self, product_data: ProductSchema) -> Product:
+        db_product = Product(**product_data.model_dump())
         self.db.add(db_product)
         self.db.commit()
         self.db.refresh(db_product)
-
         return db_product
 
     def get_all_products(self) -> list[Product]:
         return self.db.query(Product).all()
 
+    def get_product_by_id(self, product_id: int) -> Product | None:
+        return self.db.query(Product).filter(Product.id == product_id).first()
 
-    def get_product_by_id(
-        self,
-        product_id: int,
-    ) -> Product | None:
-        return (
-            self.db.query(Product)
-            .filter(Product.id == product_id)
-            .first()
-        )
+    def get_products_by_name(self, name: str) -> list[Product]:
+        return self.db.query(Product).filter(Product.name.ilike(f"%{name}%")).all()
 
-    def delete_product(
-        self,
-        product_id: int,
-    ) -> bool:
-        product = self.get_product_by_id(product_id)
-
-        if product is None:
-            return False
-
-        self.db.delete(product)
+    def update_product(self, product_id: int, product_data: ProductSchema) -> Product | None:
+        db_product = self.get_product_by_id(product_id)
+        if not db_product:
+            return None
+        
+        for key, value in product_data.model_dump().items():
+            setattr(db_product, key, value)
+            
         self.db.commit()
+        self.db.refresh(db_product)
+        return db_product
 
+    def delete_product(self, product_id: int) -> bool:
+        db_product = self.get_product_by_id(product_id)
+        if not db_product:
+            return False
+        
+        self.db.delete(db_product)
+        self.db.commit()
         return True
