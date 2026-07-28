@@ -5,7 +5,7 @@ from src.database import Base
 
 #Pydantic model
 class ProductSchema(BaseModel):
-    id: int
+    id: int | None = None
     name: str
     unit: str
     cost_per_unit: float = Field(gt=0)
