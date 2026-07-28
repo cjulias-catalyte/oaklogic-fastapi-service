@@ -38,6 +38,29 @@ class ProductRepository:
 
     def get_product_by_name(self, product_name: str) -> Product | None:
         return self.db.query(Product).filter(Product.name.ilike(f"%{product_name}%")).first()
+    
+    def search_products(
+        self,
+        name: str | None = None,
+        unit: str | None = None,
+        cost_per_unit: float | None = None,
+        price_per_unit: float | None = None,
+        quantity_in_stock: float | None = None,
+    ) -> list[Product]:
+        query = self.db.query(Product)
+
+        if name is not None:
+            query = query.filter(Product.name.ilike(f"%{name}%"))
+        if unit is not None:
+            query = query.filter(Product.unit.ilike(unit))
+        if cost_per_unit is not None:
+            query = query.filter(Product.cost_per_unit == cost_per_unit)
+        if price_per_unit is not None:
+            query = query.filter(Product.price_per_unit == price_per_unit)
+        if quantity_in_stock is not None:
+            query = query.filter(Product.quantity_in_stock == quantity_in_stock)
+
+        return query.all()
 
     def get_product_by_id(
         self,
