@@ -3,7 +3,18 @@ from pydantic import BaseModel, Field
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
 from src.repositories.product_repository import ProductRepository
-from src.models.product import ProductSchema
+
+# Define Schema here to ensure validation (Field constraints)
+class ProductSchema(BaseModel):
+    id: int
+    name: str
+    unit: str
+    cost_per_unit: float = Field(gt=0, description="Cost must be greater than 0")
+    price_per_unit: float = Field(gt=0, description="Price must be greater than 0")
+    quantity_in_stock: int = Field(ge=0, description="Quantity cannot be negative")
+
+    class Config:
+        from_attributes = True
 
 app = FastAPI()
 
@@ -18,13 +29,11 @@ def get_db():
     finally:
         db.close()
 
-# --- DIAGNOSTIC ROUTE ---
+# --- DIAGNOSTICS ---
 @app.get("/db-check")
 def db_check(db: Session = Depends(get_db)):
     repo = ProductRepository(db)
-    # Get all products from repo and count them
-    count = len(repo.get_all_products())
-    return {"product_count": count}
+    return {"product_count": len(repo.get_all_products())}
 
 # --- ROUTES ---
 
@@ -34,16 +43,8 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
     return repo.create_new_product(product_data)
 
 @app.get("/products", response_model=list[ProductSchema])
-def get_products(id: int = None, db: Session = Depends(get_db)):
+def get_products(db: Session = Depends(get_db)):
     repo = ProductRepository(db)
-    
-    # Fix: use is not None to handle ID 0 correctly
-    if id is not None:
-        product = repo.get_product_by_id(id)
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Product with ID {id} not found")
-        return [product]
-        
     return repo.get_all_products()
 
 @app.get("/products/search", response_model=list[ProductSchema])
@@ -70,19 +71,20 @@ def update_product(product_id: int, product_data: ProductSchema, db: Session = D
         raise HTTPException(status_code=404, detail=f"Product with ID {product_id} not found")
     return updated_product
 
-@app.delete("/products", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(id: int = None, name: str = None, db: Session = Depends(get_db)):
+# --- DELETE ROUTES (SPECIFIC MUST COME BEFORE GENERIC) ---
+
+@app.delete("/products/by-name/{name}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product_by_name(name: str, db: Session = Depends(get_db)):
     repo = ProductRepository(db)
-    
-    if id is not None:
-        success = repo.delete_product(id)
-        if not success:
-            raise HTTPException(status_code=404, detail=f"Product with ID {id} not found")
-    elif name is not None:
-        success = repo.delete_products_by_name(name)
-        if not success:
-            raise HTTPException(status_code=404, detail=f"No products found with name '{name}'")
-    else:
-        raise HTTPException(status_code=400, detail="You must provide either an 'id' or a 'name' to delete.")
-    
-    return None 
+    success = repo.delete_products_by_name(name)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"No products found with name '{name}'")
+    return None
+
+@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    repo = ProductRepository(db)
+    success = repo.delete_product(product_id)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Product with ID {product_id} not found")
+    return None
