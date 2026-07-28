@@ -4,11 +4,12 @@ from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
 from src.models.product import Product, ProductSchema
 from src.repositories.product_repository import ProductRepository
-
+from src.repositories.product_repository import ProductUpdateRepository
 app = FastAPI()
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
+update_repository = ProductUpdateRepository()
 
 @app.get("/")
 async def root():
@@ -49,6 +50,7 @@ def get_db():
 def db_check(db: Session = Depends(get_db)):
     count = db.query(Product).count()
     return {"product_count": count}
+
 
 @app.post("/products", response_model=ProductSchema, status_code=201)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
@@ -92,9 +94,7 @@ def delete_product_by_id(
     db:Session = Depends(get_db),
 ):
     repository = ProductRepository(db)
-
-    product_was_deleted = repository.delete_product_by_id(product_id)
-
+    product_was_deleted = repository.delete_product(product_id)
 
     if not product_was_deleted:
         raise HTTPException(
@@ -121,3 +121,50 @@ def delete_product_by_name(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.put("/products/{identifier}", response_model=ProductSchema, status_code=200)
+def update_product(
+    identifier: str,
+    product_data: ProductSchema,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates an existing product using its ID or name as the identifier.
+    """
+    product_id = None
+    product_name = None
+    # Determine whether identifier is an ID or name
+    if identifier.isdigit():
+        product_id = int(identifier)
+
+        if product_id <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Product ID must be greater than 0."
+            )
+    else:
+        product_name = identifier.strip()
+
+        if not product_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Product name cannot be empty."
+            )
+    # Make sure at least one identifier is provided
+    if product_id is None and product_name is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either product_id or product_name."
+        )
+    product = update_repository.update_product(
+        db=db,
+        product_data=product_data,
+        product_id=product_id,
+        product_name=product_name
+    )
+    if product is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+    return product
