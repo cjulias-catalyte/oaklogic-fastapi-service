@@ -96,7 +96,7 @@ def delete_product_by_id(
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-@app.delete("/products/{product_name}")
+@app.delete("/products/name/{product_name}")
 def delete_product_by_name(
     product_name: str,
     db:Session = Depends(get_db),
