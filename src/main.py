@@ -63,7 +63,7 @@ def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
 
-@app.get("/products/search/{identifier}", response_model=ProductSchema)
+@app.get("/products/filter/{identifier}", response_model=ProductSchema)
 def get_product(identifier: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
 
@@ -94,7 +94,7 @@ def delete_product_by_id(
     db:Session = Depends(get_db),
 ):
     repository = ProductRepository(db)
-    product_was_deleted = repository.delete_product(product_id)
+    product_was_deleted = repository.delete_product_by_id(product_id)
 
     if not product_was_deleted:
         raise HTTPException(
