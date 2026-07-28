@@ -61,7 +61,7 @@ def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
 
-@app.get("/items/{identifier}", response_model=ProductSchema)
+@app.get("/products/{identifier}", response_model=ProductSchema)
 def get_product(identifier: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
 
