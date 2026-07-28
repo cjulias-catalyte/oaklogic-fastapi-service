@@ -37,7 +37,7 @@ class ProductRepository:
         return self.db.query(Product).filter(Product.id == product_id).first()
 
     def get_product_by_name(self, product_name: str) -> Product | None:
-        return self.db.query(Product).filter(Product.name.ilike({product_name})).first()
+        return self.db.query(Product).filter(Product.name.ilike(f"%{product_name}%")).first()
 
     def get_product_by_id(
         self,
