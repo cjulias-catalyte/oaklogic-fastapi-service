@@ -19,3 +19,44 @@ def test_create_product():
 
     assert response.json()["name"] == "Basil Plant - 4in Pot"
 
+def test_create_product_invalid_price_type():
+    response = client.post(
+        "/products",
+        json={
+            "name": "Fertilizer",
+            "unit": "bag",
+            "cost_per_unit": "not a number",
+            "price_per_unit": 20.00,
+            "quantity_in_stock": 10
+        }
+    )
+
+    assert response.status_code == 422
+
+def test_create_product_missing_quantity():
+    response = client.post(
+        "/products",
+        json={
+            "name": "Rose Plant",
+            "unit": "each",
+            "cost_per_unit": 5.00,
+            "price_per_unit": 12.99
+        }
+    )
+
+    assert response.status_code == 422
+
+def test_create_product_no_data():
+    response = client.post("/products")
+
+    assert response.status_code == 422
+
+def test_search_products_by_name():
+    response = client.get("/products/search?name=Basil")
+
+    assert response.status_code == 200
+
+    products = response.json()
+
+    assert len(products) > 0
+    assert products[0]["name"] == "Basil Plant - 4in Pot"

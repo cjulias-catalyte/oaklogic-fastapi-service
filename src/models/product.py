@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, Boolean
 from src.database import Base
 
 
-
+#Pydantic model
 class ProductSchema(BaseModel):
     id: int | None = None
     name: str
@@ -12,7 +12,7 @@ class ProductSchema(BaseModel):
     quantity_in_stock: float = Field(ge=0)
 
 
-
+#SQLAlchemy model
 class Product(Base):
     __tablename__ = "products"
     
