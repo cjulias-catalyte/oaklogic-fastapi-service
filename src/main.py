@@ -79,18 +79,39 @@ def get_product(id: int | None = None, name: str | None = None, db: Session = De
         raise HTTPException(status_code=404, detail="Product not found")
 
     return product
-@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(
+    
+@app.delete("/products/{product_id}")
+def delete_product_by_id(
     product_id: int,
     db:Session = Depends(get_db),
 ):
     repository = ProductRepository(db)
-    product_was_deleted = repository.delete_product(product_id)
+
+    product_was_deleted = repository.delete_product_by_id(product_id)
+
 
     if not product_was_deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with ID {product_id} was not found",
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.delete("/products/{product_name}")
+def delete_product_by_name(
+    product_name: str,
+    db:Session = Depends(get_db),
+):
+    repository = ProductRepository(db)
+
+    product_was_deleted = repository.delete_product_by_name(product_name)
+
+
+    if not product_was_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with ID {product_name} was not found",
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
