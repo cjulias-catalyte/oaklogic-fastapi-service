@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response, status, Depends, HTTPException
+from fastapi import FastAPI, Query, status, Depends, HTTPException
 from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
@@ -76,18 +76,66 @@ def get_product(id: int | None = None, name: str | None = None, db: Session = De
         raise HTTPException(status_code=404, detail="Product not found")
 
     return product
-@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.delete(
+    "/products",
+    status_code=status.HTTP_200_OK,
+)
 def delete_product(
-    product_id: int,
-    db:Session = Depends(get_db),
+    product_id: int | None = Query(
+        default=None,
+        alias="id",
+        ge=1,
+        description="ID of the product to delete",
+    ),
+    product_name: str | None = Query(
+        default=None,
+        alias="name",
+        min_length=1,
+        description="Name of the product to delete",
+    ),
+    db: Session = Depends(get_db),
 ):
     repository = ProductRepository(db)
-    product_was_deleted = repository.delete_product(product_id)
 
-    if not product_was_deleted:
+    if product_id is None and product_name is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product with ID {product_id} was not found",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must provide either an 'id' or a 'name'.",
         )
 
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    if product_id is not None and product_name is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide either an 'id' or a 'name', but not both.",
+        )
+
+    if product_id is not None:
+        deleted = repository.delete_product_by_id(product_id)
+
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Product with ID {product_id} was not found.",
+            )
+
+        return {
+            "message": "Product deleted successfully",
+            "deleted_by": "id",
+            "product_id": product_id,
+        }
+
+    deleted = repository.delete_product_by_name(product_name)
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No product was found with the name '{product_name}'.",
+        )
+
+    return {
+        "message": "Product deleted successfully",
+        "deleted_by": "name",
+        "product_name": product_name,
+    }
