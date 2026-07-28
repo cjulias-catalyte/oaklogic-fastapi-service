@@ -91,10 +91,11 @@ def get_products(name: str | None = None, unit: str | None = None, cost_per_unit
 @app.delete("/products/{product_id}")
 def delete_product_by_id(
     product_id: int,
-    db:Session = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     repository = ProductRepository(db)
-    product_was_deleted = repository.delete_product(product_id)
+
+    product_was_deleted = repository.delete_product_by_id(product_id)
 
     if not product_was_deleted:
         raise HTTPException(
