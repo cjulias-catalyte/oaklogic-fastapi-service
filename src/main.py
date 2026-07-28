@@ -79,11 +79,11 @@ def get_product(identifier: str, db: Session = Depends(get_db)):
     return product
 
 @app.get("/products/filter/", response_model=list[ProductSchema])
-def get_products(name: str | None = None, unit: str | None = None, cost_per_unit: float | None = None, price_per_unit: float | None = None, quantity_in_stock: float | None = None,
+def get_products(name: str | None = None, unit: str | None = None, cost_per_unit: float | None = None, id: int | None = None, price_per_unit: float | None = None, quantity_in_stock: float | None = None,
     db: Session = Depends(get_db)):
     
     repository = ProductRepository(db)
-    return repository.search_products(name=name, unit=unit, cost_per_unit=cost_per_unit, price_per_unit=price_per_unit, quantity_in_stock=quantity_in_stock,)
+    return repository.search_products(name=name, unit=unit, cost_per_unit=cost_per_unit, id = id, price_per_unit=price_per_unit, quantity_in_stock=quantity_in_stock,)
     
     
 @app.delete("/products/{product_id}")
