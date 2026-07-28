@@ -36,8 +36,8 @@ class ProductRepository:
     def get_product_by_id(self, product_id: int) -> Product | None:
         return self.db.query(Product).filter(Product.id == product_id).first()
 
-    def get_product_by_name(self, name: str) -> Product | None:
-        return self.db.query(Product).filter(Product.name.ilike(f"%{name}%")).first()
+    def get_product_by_name(self, product_name: str) -> Product | None:
+        return self.db.query(Product).filter(Product.name.ilike({product_name})).first()
 
     def get_product_by_id(
         self,
@@ -49,7 +49,7 @@ class ProductRepository:
             .first()
         )
 
-    def delete_product(
+    def delete_product_by_id(
         self,
         product_id: int,
     ) -> bool:
@@ -62,3 +62,17 @@ class ProductRepository:
         self.db.commit()
 
         return True
+
+    def delete_product_by_name(
+            self,
+            product_name: str,
+        ) -> bool:
+            product = self.get_product_by_name(product_name)
+    
+            if product is None:
+                return False
+    
+            self.db.delete(product)
+            self.db.commit()
+    
+            return True
