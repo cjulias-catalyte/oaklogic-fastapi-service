@@ -1,6 +1,18 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from src.database import Base
 
+
+
+class ProductSchema(BaseModel):
+    id: int | None = None
+    name: str
+    unit: str
+    cost_per_unit: float = Field(gt=0)
+    price_per_unit: float = Field(gt=0)
+    quantity_in_stock: float = Field(ge=0)
+
+
+
 class Product(Base):
     __tablename__ = "products"
     
