@@ -18,6 +18,14 @@ def get_db():
     finally:
         db.close()
 
+# --- DIAGNOSTIC ROUTE ---
+@app.get("/db-check")
+def db_check(db: Session = Depends(get_db)):
+    repo = ProductRepository(db)
+    # Get all products from repo and count them
+    count = len(repo.get_all_products())
+    return {"product_count": count}
+
 # --- ROUTES ---
 
 @app.post("/products", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
@@ -28,11 +36,14 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 @app.get("/products", response_model=list[ProductSchema])
 def get_products(id: int = None, db: Session = Depends(get_db)):
     repo = ProductRepository(db)
+    
+    # Fix: use is not None to handle ID 0 correctly
     if id is not None:
         product = repo.get_product_by_id(id)
         if not product:
             raise HTTPException(status_code=404, detail=f"Product with ID {id} not found")
         return [product]
+        
     return repo.get_all_products()
 
 @app.get("/products/search", response_model=list[ProductSchema])
@@ -63,7 +74,6 @@ def update_product(product_id: int, product_data: ProductSchema, db: Session = D
 def delete_product(id: int = None, name: str = None, db: Session = Depends(get_db)):
     repo = ProductRepository(db)
     
-    # Logic: Delete by ID if provided, else delete by Name
     if id is not None:
         success = repo.delete_product(id)
         if not success:
@@ -75,4 +85,4 @@ def delete_product(id: int = None, name: str = None, db: Session = Depends(get_d
     else:
         raise HTTPException(status_code=400, detail="You must provide either an 'id' or a 'name' to delete.")
     
-    return None
+    return None 
