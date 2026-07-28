@@ -28,14 +28,11 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 @app.get("/products", response_model=list[ProductSchema])
 def get_products(id: int = None, db: Session = Depends(get_db)):
     repo = ProductRepository(db)
-    
-    # FIX: Use 'is not None' to ensure 0 is treated as a valid ID
     if id is not None:
         product = repo.get_product_by_id(id)
         if not product:
             raise HTTPException(status_code=404, detail=f"Product with ID {id} not found")
         return [product]
-        
     return repo.get_all_products()
 
 @app.get("/products/search", response_model=list[ProductSchema])
@@ -62,16 +59,20 @@ def update_product(product_id: int, product_data: ProductSchema, db: Session = D
         raise HTTPException(status_code=404, detail=f"Product with ID {product_id} not found")
     return updated_product
 
-@app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(product_id: int, db: Session = Depends(get_db)):
+@app.delete("/products", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(id: int = None, name: str = None, db: Session = Depends(get_db)):
     repo = ProductRepository(db)
-    success = repo.delete_product(product_id)
-    if not success:
-        raise HTTPException(status_code=404, detail=f"Product with ID {product_id} not found")
+    
+    # Logic: Delete by ID if provided, else delete by Name
+    if id is not None:
+        success = repo.delete_product(id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Product with ID {id} not found")
+    elif name is not None:
+        success = repo.delete_products_by_name(name)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"No products found with name '{name}'")
+    else:
+        raise HTTPException(status_code=400, detail="You must provide either an 'id' or a 'name' to delete.")
+    
     return None
-
-@app.get("/db-check")
-def db_check(db: Session = Depends(get_db)):
-    repo = ProductRepository(db)
-    count = len(repo.get_all_products())
-    return {"product_count": count}
