@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from src.database import Base
-
+from pydantic import BaseModel, Field
 
 #Pydantic model
 class ProductSchema(BaseModel):
