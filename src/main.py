@@ -61,20 +61,21 @@ def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
 
-@app.get("/products/search", response_model=ProductSchema)
-def get_product(id: int | None = None, name: str | None = None, db: Session = Depends(get_db)):
+@app.get("/items/{identifier}", response_model=ProductSchema)
+def get_product(identifier: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
 
-    if id is not None:
-        product = repository.get_product_by_id(id)
-    elif name is not None:
-        product = repository.get_product_by_name(name)
+    if identifier.isdigit():
+        product = repository.get_product_by_id(int(identifier))
     else:
-        raise HTTPException(status_code=400, detail="Must provide id or name")
+        product = repository.get_product_by_name(identifier)
 
     if product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-
+        if identifier.isdigit():
+            raise HTTPException(status_code=404, detail=f"Product with Id: {identifier} was not found")
+        else:
+            raise HTTPException(status_code=404, detail=f"Product with name '{identifier}' was not found")
+    
     return product
     
 @app.delete("/products/{product_id}")
