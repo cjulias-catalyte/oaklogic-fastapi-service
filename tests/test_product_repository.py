@@ -1,26 +1,23 @@
 import pytest
 import uuid
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+# 1. Import Product first to ensure model registration
+from src.models.product import Product
+# 2. Use the SHARED engine from src.database instead of creating a new one
+from src.database import Base, engine
 from src.main import app, get_db
-from src.database import Base
 
 # ==========================================
-# TEST DATABASE SETUP (IN-MEMORY SQLITE)
+# TEST DATABASE SETUP (SHARED IN-MEMORY)
 # ==========================================
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def override_get_db():
-    """Overrides the FastAPI dependency to use an isolated test database."""
+    """Overrides the FastAPI dependency to use the isolated test session."""
     try:
         db = TestingSessionLocal()
         yield db
@@ -101,7 +98,6 @@ def test_create_product_no_data():
 
 
 def test_search_products_by_name():
-    # Setup product first since each test runs on a clean DB
     client.post(
         "/products",
         json={
@@ -282,7 +278,6 @@ def test_update_product_invalid_id():
         "price_per_unit": 2.00,
         "quantity_in_stock": 5
     }
-    # Passing zero or negative ID triggers your custom 400 Bad Request
     response = client.put("/products/0", json=update_payload)
     assert response.status_code == 400
 
@@ -307,7 +302,6 @@ def test_delete_product_by_id():
     delete_res = client.delete(f"/products/{product_id}")
     assert delete_res.status_code in [200, 204]
 
-    # Verify it is actually gone
     get_res = client.get(f"/products/search/{product_id}")
     assert get_res.status_code == 404
 
@@ -333,7 +327,6 @@ def test_delete_product_by_name():
     delete_res = client.delete(f"/products/name/{name}")
     assert delete_res.status_code in [200, 204]
 
-    # Verify deletion
     get_res = client.get(f"/products/search/{name}")
     assert get_res.status_code == 404
 
