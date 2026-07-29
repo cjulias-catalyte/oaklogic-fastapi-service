@@ -3,14 +3,7 @@ from sqlalchemy.orm import Session
 
 
 class ProductRepository:
-    # def __init__(self):
-    #     self._products: list[Product] = []
-
-    # def add_product(self, product: Product) -> None:
-    #     self._products.append(product)
-
-   
-
+    
     def __init__(self, db: Session):
         self.db = db
     

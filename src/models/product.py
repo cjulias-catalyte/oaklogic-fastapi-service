@@ -19,7 +19,7 @@ class Product(Base):
     __tablename__ = 'product'
     
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
+    name = Column(String, unique=True, index=True)
     unit= Column(String, index=True)
     cost_per_unit = Column(Float, index=True)
     price_per_unit = Column(Float, index=True) 

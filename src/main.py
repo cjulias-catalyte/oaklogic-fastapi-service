@@ -2,9 +2,11 @@ from fastapi import FastAPI, Response, status, Depends, HTTPException
 from pydantic import BaseModel
 from src.database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from src.models.product import Product, ProductSchema
 from src.repositories.product_repository import ProductRepository
 from src.repositories.product_repository import ProductUpdateRepository
+
 app = FastAPI()
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -19,24 +21,6 @@ async def root():
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello, {name}!"}
-
-# @app.post("/products", status_code=201)
-# def create_product(product: ProductSchema):
-#     products.add_product(product)
-#     return product
-
-# @app.get("/products")
-# async def get_products():
-#     return products.get_all()
-
-# @app.get("/products/search")
-# def search_products(name: str, unit: str = "each"):
-#     results = [p for p in products.get_all() if name.lower() in p.name.lower()]
-
-#     if unit is not None:
-#         results = [p for p in results if p.unit.lower() == unit.lower()]
-
-#     return results
 
 
 def get_db():
@@ -55,7 +39,11 @@ def db_check(db: Session = Depends(get_db)):
 @app.post("/products", response_model=ProductSchema, status_code=201)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
-    return repository.create_new_product(product_data)
+    try:
+        return repository.create_new_product(product_data)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=f"Product '{product_data.name}' already exists")
 
 
 @app.get("/products", response_model=list[ProductSchema])
@@ -63,7 +51,7 @@ def get_products(db: Session = Depends(get_db)):
     repository = ProductRepository(db)
     return repository.get_all_products()
 
-@app.get("/products/{identifier}", response_model=ProductSchema)
+@app.get("/products/search/{identifier}", response_model=ProductSchema)
 def get_product(identifier: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
 
@@ -94,7 +82,6 @@ def delete_product_by_id(
     db: Session = Depends(get_db),
 ):
     repository = ProductRepository(db)
-
     product_was_deleted = repository.delete_product_by_id(product_id)
 
     if not product_was_deleted:
