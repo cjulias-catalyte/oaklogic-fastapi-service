@@ -105,7 +105,7 @@ def delete_product_by_name(
     if not product_was_deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product with ID {product_name} was not found",
+            detail=f"Product with name {product_name} was not found",
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
