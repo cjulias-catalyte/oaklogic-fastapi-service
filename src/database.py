@@ -2,12 +2,8 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-<<<<<<< HEAD
-from sqlalchemy.pool import StaticPool
-=======
 
 
->>>>>>> c5fd1cb4d527d08897f7869b3b5b436390e09411
 
 load_dotenv()
 
