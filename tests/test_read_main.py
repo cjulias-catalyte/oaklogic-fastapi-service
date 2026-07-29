@@ -1,7 +1,42 @@
+import pytest
 from fastapi.testclient import TestClient
-from src.main import app
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
+from src.main import app, get_db
+from src.database import Base
+
+# ==========================================
+# TEST DATABASE SETUP (IN-MEMORY SQLITE)
+# ==========================================
+
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def override_get_db():
+    """Overrides the FastAPI dependency to use an isolated test database."""
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def setup_and_teardown_db():
+    """Create fresh tables before each test and drop them afterward."""
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
 
 
 # ==========================================
@@ -25,10 +60,11 @@ def test_db_check():
     assert response.status_code == 200
     assert "product_count" in response.json()
     assert isinstance(response.json()["product_count"], int)
+    assert response.json()["product_count"] == 0  # Clean DB starts at 0
 
 
 def test_get_products():
-    # Setup: Create 'soil' product so the read assertions pass on an empty database
+    # Setup: Create 'soil' product
     client.post(
         "/products",
         json={
@@ -42,8 +78,10 @@ def test_get_products():
     
     response = client.get("/products")
     assert response.status_code == 200
-    assert response.json()[0]["name"] == "soil"
-    assert response.json()[0]["unit"] == "bag"
+    products = response.json()
+    assert len(products) == 1
+    assert products[0]["name"] == "soil"
+    assert products[0]["unit"] == "bag"
 
 
 # ==========================================
@@ -66,6 +104,7 @@ def test_get_product_by_id_success():
     response = client.get(f"/products/search/{product_id}")
     assert response.status_code == 200
     assert response.json()["id"] == product_id
+    assert response.json()["name"] == "Tomato Plant"
 
 
 def test_get_product_by_id_not_found():
@@ -116,7 +155,8 @@ def test_filter_products_by_params():
     response = client.get("/products/filter/?unit=pot&cost_per_unit=10.0")
     assert response.status_code == 200
     results = response.json()
-    assert len(results) > 0
+    assert len(results) == 1
+    assert results[0]["name"] == "Rose Bush"
     assert results[0]["unit"] == "pot"
 
 
