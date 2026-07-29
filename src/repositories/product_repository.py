@@ -9,7 +9,7 @@ class ProductRepository:
     
     def create_new_product(self, product_data: ProductSchema) -> Product:
         db_product = Product(
-            id=product_data.id,
+            
             name=product_data.name,
             unit=product_data.unit,
             cost_per_unit=product_data.cost_per_unit,
