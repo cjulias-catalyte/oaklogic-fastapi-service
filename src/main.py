@@ -10,7 +10,9 @@ from src.repositories.product_repository import ProductRepository, ProductUpdate
 app = FastAPI()
 
 # 2. Now SQLAlchemy knows about the Product table when this runs
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
+
 
 
 def get_db():
