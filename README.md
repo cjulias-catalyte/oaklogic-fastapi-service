@@ -18,7 +18,7 @@ python -m venv venv
 Activate virtual environment: 
 
 ```bash
-venv\Scripts\activate
+venv/Scripts/activate
 ```
 
 # Installation
