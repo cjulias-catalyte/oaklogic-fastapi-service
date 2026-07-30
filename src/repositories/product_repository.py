@@ -13,6 +13,7 @@ class ProductRepository:
             cost_per_unit=product_data.cost_per_unit,
             price_per_unit=product_data.price_per_unit,
             quantity_in_stock=product_data.quantity_in_stock,
+            category_id=product_data.category_id,
         )
         self.db.add(db_product)
         self.db.commit()

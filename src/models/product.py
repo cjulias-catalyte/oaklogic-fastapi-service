@@ -13,7 +13,7 @@ class ProductCreate(BaseModel):
     cost_per_unit: float = Field(gt=0)
     price_per_unit: float = Field(gt=0)
     quantity_in_stock: float = Field(ge=0)
-    category_id: int | None = None
+    
 
 
 class ProductSchema(BaseModel):
@@ -76,7 +76,7 @@ class Product(Base):
     category_id = Column(
         Integer,
         ForeignKey("category.id", ondelete="SET NULL"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
 
