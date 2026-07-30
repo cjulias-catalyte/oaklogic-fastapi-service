@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from src.models.product import Product, ProductCreate, ProductSchema
+from src.models.product import Product, ProductSchema
 
 
 class ProductRepository:
@@ -29,9 +29,11 @@ class ProductRepository:
             price_per_unit=product_data.price_per_unit,
             quantity_in_stock=product_data.quantity_in_stock,
         )
+
         self.db.add(db_product)
         self.db.commit()
         self.db.refresh(db_product)
+
         return db_product
 
     def get_all_products(self) -> list[Product]:
@@ -94,14 +96,24 @@ class ProductRepository:
 
         if name:
             query = query.filter(Product.name.ilike(f"%{name}%"))
-        if unit:
-            query = query.filter(Product.unit == unit)
+
+        if unit is not None:
+            query = query.filter(Product.unit.ilike(unit))
+
         if cost_per_unit is not None:
-            query = query.filter(Product.cost_per_unit == cost_per_unit)
+            query = query.filter(
+                Product.cost_per_unit == cost_per_unit
+            )
+
         if price_per_unit is not None:
-            query = query.filter(Product.price_per_unit == price_per_unit)
+            query = query.filter(
+                Product.price_per_unit == price_per_unit
+            )
+
         if quantity_in_stock is not None:
-            query = query.filter(Product.quantity_in_stock == quantity_in_stock)
+            query = query.filter(
+                Product.quantity_in_stock == quantity_in_stock
+            )
 
         return query.all()
 
@@ -115,10 +127,12 @@ class ProductRepository:
             True if the product was deleted successfully, otherwise False.
         """
         product = self.get_product_by_id(product_id)
-        if not product:
+
+        if product is None:
             return False
         self.db.delete(product)
         self.db.commit()
+
         return True
 
     def delete_product_by_name(self, product_name: str) -> bool:
@@ -135,6 +149,7 @@ class ProductRepository:
             return False
         self.db.delete(product)
         self.db.commit()
+
         return True
 
 
@@ -165,27 +180,37 @@ class ProductUpdateRepository:
             ValueError: If both ``product_id`` and ``product_name`` are provided.
         """
         if product_id is not None and product_name is not None:
-            raise ValueError("Provide either product_id or product_name, not both")
+            raise ValueError(
+                "Provide either product_id or product_name, not both"
+            )
 
         if product_id is not None:
-            product = repo.get_product_by_id(product_id)
+            product = (
+                db.query(Product)
+                .filter(Product.id == product_id)
+                .first()
+            )
+
         elif product_name is not None:
-            product = repo.get_product_by_name(product_name)
+            product = (
+                db.query(Product)
+                .filter(Product.name == product_name)
+                .first()
+            )
+
         else:
             return None
 
         if not product:
             return None
 
-        update_dict = product_data.model_dump(exclude_unset=True)
-        update_dict.pop("id", None)
-
-        cat_id = update_dict.get("category_id")
-        if cat_id is not None and (not isinstance(cat_id, int) or cat_id <= 0):
-            update_dict["category_id"] = None
-
-        for key, value in update_dict.items():
-            setattr(product, key, value)
+        # The primary key is not updated because it identifies the
+        # existing database row.
+        product.name = product_data.name
+        product.unit = product_data.unit
+        product.cost_per_unit = product_data.cost_per_unit
+        product.price_per_unit = product_data.price_per_unit
+        product.quantity_in_stock = product_data.quantity_in_stock
 
         db.commit()
         db.refresh(product)
