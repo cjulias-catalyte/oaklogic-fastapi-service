@@ -124,4 +124,4 @@ class ProductUpdateRepository:
 
         db.commit()
         db.refresh(product)
-        return product
+        return product 
