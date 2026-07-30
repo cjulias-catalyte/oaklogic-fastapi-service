@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from src.models.product import Product, ProductSchema
+from src.models.product import Product, ProductCreate, ProductSchema
 
 
 class ProductRepository:
@@ -94,12 +94,10 @@ class ProductRepository:
         """
         query = self.db.query(Product)
 
-        if name is not None:
+        if name:
             query = query.filter(Product.name.ilike(f"%{name}%"))
-
-        if unit is not None:
-            query = query.filter(Product.unit.ilike(unit))
-
+        if unit:
+            query = query.filter(Product.unit == unit)
         if cost_per_unit is not None:
             query = query.filter(
                 Product.cost_per_unit == cost_per_unit
@@ -127,10 +125,8 @@ class ProductRepository:
             True if the product was deleted successfully, otherwise False.
         """
         product = self.get_product_by_id(product_id)
-
-        if product is None:
+        if not product:
             return False
-
         self.db.delete(product)
         self.db.commit()
 
@@ -148,7 +144,6 @@ class ProductRepository:
         product = self.get_product_by_name(product_name)
         if product is None:
             return False
-
         self.db.delete(product)
         self.db.commit()
 
@@ -161,7 +156,7 @@ class ProductUpdateRepository:
     def update_product(
         self,
         db: Session,
-        product_data: ProductSchema,
+        product_data: ProductCreate | ProductSchema,
         product_id: int | None = None,
         product_name: str | None = None,
     ) -> Product | None:
@@ -187,32 +182,24 @@ class ProductUpdateRepository:
             )
 
         if product_id is not None:
-            product = (
-                db.query(Product)
-                .filter(Product.id == product_id)
-                .first()
-            )
-
+            product = repo.get_product_by_id(product_id)
         elif product_name is not None:
-            product = (
-                db.query(Product)
-                .filter(Product.name == product_name)
-                .first()
-            )
-
+            product = repo.get_product_by_name(product_name)
         else:
             return None
 
-        if product is None:
+        if not product:
             return None
 
-        # The primary key is not updated because it identifies the
-        # existing database row.
-        product.name = product_data.name
-        product.unit = product_data.unit
-        product.cost_per_unit = product_data.cost_per_unit
-        product.price_per_unit = product_data.price_per_unit
-        product.quantity_in_stock = product_data.quantity_in_stock
+        update_dict = product_data.model_dump(exclude_unset=True)
+        update_dict.pop("id", None)
+
+        cat_id = update_dict.get("category_id")
+        if cat_id is not None and (not isinstance(cat_id, int) or cat_id <= 0):
+            update_dict["category_id"] = None
+
+        for key, value in update_dict.items():
+            setattr(product, key, value)
 
         db.commit()
         db.refresh(product)

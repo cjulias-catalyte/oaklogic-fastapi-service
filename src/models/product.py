@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from src.database import Base
 
 
@@ -72,7 +73,6 @@ class Product(Base):
     price_per_unit = Column(Float, index=True, nullable=False)
     quantity_in_stock = Column(Float, index=True, nullable=False)
 
-    # Foreign Key pointing to category.id (nullable=True allows uncategorized products)
     category_id = Column(
         Integer,
         ForeignKey("category.id", ondelete="SET NULL"),
@@ -80,5 +80,4 @@ class Product(Base):
         index=True,
     )
 
-    # Many-to-One: Many Products belong to one Category
     category = relationship("Category", back_populates="products")
