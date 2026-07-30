@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from src.models.product import Product, ProductSchema
+
+from src.models.product import Product, ProductCreate, ProductSchema
 
 
 class ProductRepository:
@@ -7,15 +8,15 @@ class ProductRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_new_product(self, product_data: ProductSchema) -> Product:
-        # Convert Pydantic model to dict
+    def create_new_product(self, product_data: ProductCreate | ProductSchema) -> Product:
         data = product_data.model_dump(exclude_unset=True)
 
-        # Remove id if present so database auto-generates primary key
+        # Remove id if provided so database generates the primary key
         data.pop("id", None)
 
-        # Normalize category_id: if 0 or invalid, set to None
-        if data.get("category_id") == 0:
+        # Normalize category_id: convert 0 or non-positive integer to None
+        cat_id = data.get("category_id")
+        if cat_id is not None and (not isinstance(cat_id, int) or cat_id <= 0):
             data["category_id"] = None
 
         db_product = Product(**data)
@@ -78,7 +79,7 @@ class ProductUpdateRepository:
     def update_product(
         self,
         db: Session,
-        product_data: ProductSchema,
+        product_data: ProductCreate | ProductSchema,
         product_id: int | None = None,
         product_name: str | None = None,
     ) -> Product | None:
@@ -97,7 +98,8 @@ class ProductUpdateRepository:
         update_dict = product_data.model_dump(exclude_unset=True)
         update_dict.pop("id", None)
 
-        if update_dict.get("category_id") == 0:
+        cat_id = update_dict.get("category_id")
+        if cat_id is not None and (not isinstance(cat_id, int) or cat_id <= 0):
             update_dict["category_id"] = None
 
         for key, value in update_dict.items():

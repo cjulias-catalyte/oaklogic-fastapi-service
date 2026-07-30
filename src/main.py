@@ -1,24 +1,25 @@
-from fastapi import FastAPI, Response, status, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from src.database import engine, Base, SessionLocal
+from src.database import Base, SessionLocal, engine
 from src.models.product import (
-    Product,
     Category,
-    ProductSchema,
-    CategorySchema,
     CategoryCreate,
+    CategorySchema,
+    Product,
+    ProductCreate,
+    ProductSchema,
 )
+from src.repositories.category_repository import CategoryRepository
 from src.repositories.product_repository import (
     ProductRepository,
     ProductUpdateRepository,
 )
-from src.repositories.category_repository import CategoryRepository
 
 app = FastAPI()
 
-# Drop & create tables at startup
+# Drop & create tables on startup
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
@@ -50,6 +51,7 @@ def db_check(db: Session = Depends(get_db)):
 # ==========================================
 # CATEGORY ENDPOINTS
 # ==========================================
+
 
 @app.post(
     "/categories",
@@ -90,14 +92,21 @@ def get_category_by_id(category_id: int, db: Session = Depends(get_db)):
 # PRODUCT ENDPOINTS
 # ==========================================
 
+
 @app.post(
     "/products",
     response_model=ProductSchema,
     status_code=status.HTTP_201_CREATED,
 )
-def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
-    # 1. Validate that referenced category exists only if category_id is a valid positive integer
-    if product_data.category_id is not None and product_data.category_id > 0:
+def create_product(
+    product_data: ProductCreate | ProductSchema, db: Session = Depends(get_db)
+):
+    # 1. Normalize category_id: convert <= 0 to None
+    if product_data.category_id is not None and product_data.category_id <= 0:
+        product_data.category_id = None
+
+    # 2. Check if category exists before inserting
+    if product_data.category_id is not None:
         cat_repo = CategoryRepository(db)
         category = cat_repo.get_category_by_id(product_data.category_id)
         if not category:
@@ -106,14 +115,19 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
                 detail=f"Category with ID {product_data.category_id} does not exist",
             )
 
-    # 2. Proceed with product creation
     repository = ProductRepository(db)
     try:
         new_product = repository.create_new_product(product_data)
         db.expire_all()
         return new_product
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
+        err_str = str(e.orig).lower() if hasattr(e, "orig") else ""
+        if "foreign key" in err_str or "foreignkey" in err_str:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category with ID {product_data.category_id} does not exist",
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Product '{product_data.name}' already exists",
@@ -188,7 +202,7 @@ def delete_product_by_name(product_name: str, db: Session = Depends(get_db)):
 @app.put("/products/{identifier}", response_model=ProductSchema)
 def update_product(
     identifier: str,
-    product_data: ProductSchema,
+    product_data: ProductCreate | ProductSchema,
     db: Session = Depends(get_db),
 ):
     repository = ProductUpdateRepository()
