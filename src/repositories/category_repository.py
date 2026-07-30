@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from src.models.product import Category, CategoryCreate
 
 
@@ -49,6 +49,7 @@ class CategoryRepository:
         """
         return (
             self.db.query(Category)
+            .options(joinedload(Category.products))
             .filter(Category.id == category_id)
             .first()
         ) 
