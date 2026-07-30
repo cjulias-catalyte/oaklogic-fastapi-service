@@ -26,7 +26,7 @@ def test_product_information():
 def test_product_incorrect_datatype():
     with pytest.raises(NameError):
         Product(
-            name=soil,  # Undefined variable raises NameError
+            name= "soil",  # Undefined variable raises NameError
             unit="bag",
             cost_per_unit=3.5,
             price_per_unit=5.5,
