@@ -82,3 +82,8 @@ class Product(Base):
 
     # Many-to-One: Many Products belong to one Category
     category = relationship("Category", back_populates="products")
+
+    # Schema does not require id
+    
+
+    
