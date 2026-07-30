@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from src.models.product import Category
-from src.schemas.product import CategoryCreate  # or from src.models.product import CategoryCreate
+from src.models.product import Category, CategoryCreate
 
 
 class CategoryRepository:
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -21,4 +21,8 @@ class CategoryRepository:
         return self.db.query(Category).all()
 
     def get_category_by_id(self, category_id: int) -> Category | None:
-        return self.db.query(Category).filter(Category.id == category_id).first()
+        return (
+            self.db.query(Category)
+            .filter(Category.id == category_id)
+            .first()
+        )
