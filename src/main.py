@@ -85,7 +85,7 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
         cat_repo = CategoryRepository(db)
         if not cat_repo.get_category_by_id(product_data.category_id):
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=status.HTTP_409_BAD_REQUEST,
                 detail=f"Category with ID {product_data.category_id} does not exist",
             )
 
@@ -96,7 +96,7 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
     except IntegrityError:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status.HTTP_400_CONFLICT,
             detail=f"Product '{product_data.name}' already exists",
         )
 
