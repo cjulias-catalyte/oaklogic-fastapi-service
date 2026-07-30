@@ -51,4 +51,4 @@ class CategoryRepository:
             self.db.query(Category)
             .filter(Category.id == category_id)
             .first()
-        )
+        ) 
