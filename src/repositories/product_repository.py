@@ -28,7 +28,7 @@ class ProductRepository:
     def get_product_by_name(self, product_name: str) -> Product | None:
         return (
             self.db.query(Product)
-            .filter(Product.name.ilike(f"%{product_name}%"))
+            .filter(Product.name.ilike(product_name.strip()))
             .first()
         )
 
@@ -38,6 +38,7 @@ class ProductRepository:
             .filter(Product.name.ilike(product_name.strip()))
             .first()
         )
+    
 
     def search_products(
         self,
@@ -62,12 +63,16 @@ class ProductRepository:
 
         return query.all()
 
-    def searh_product_by_name(self, product_name: str) -> list[Product]:
-        return(
-            self.db.query(Product)
-            .filter(Product.name.ilike(f"%{product_name}"))
-            .all()
+    def search_products_by_name(self, product_name: str,) -> list[Product]:
+        return (
+        self.db.query(Product)
+        .filter(
+            Product.name.ilike(
+                f"%{product_name.strip()}%"
+            )
         )
+        .all()
+    )
     
     def delete_product_by_id(self, product_id: int) -> bool:
         product = self.get_product_by_id(product_id)

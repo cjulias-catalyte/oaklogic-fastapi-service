@@ -163,11 +163,11 @@ def delete_product_by_name(product_name: str, db: Session = Depends(get_db)):
     exact_product = repository.get_product_by_exact_name(cleaned_name)
 
     if exact_product is not None:
-        repository.delete_product_by_name(exact_product)
+        repository.delete_product_by_name(cleaned_name)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     # No exact match, so check whether the input partially matches products
-    matches = repository.find_products_by_name(cleaned_name)
+    matches = repository.search_products_by_name(cleaned_name)
 
     if len(matches) > 1:
         matching_names = [product.name for product in matches]
