@@ -31,7 +31,7 @@ class ProductRepository:
             .filter(Product.name.ilike(f"%{product_name}%"))
             .first()
         )
-
+    
     def search_products(
         self,
         name: str | None = None,
