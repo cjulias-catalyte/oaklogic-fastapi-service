@@ -68,10 +68,7 @@ def test_delete_product_by_name_success():
 
 
 def test_delete_product_by_name_not_found():
-
-    #Act
     response = client.delete("/products/name/NonExistentPlantToDel")
-
-    #Assert
     assert response.status_code == 404
-    assert "Product with name NonExistentPlantToDe was not found " in response.json()["detail"]
+    # Match the exact detail format returned by main.py
+    assert response.json()["detail"] == "Product with name 'NonExistentPlantToDel' was not found"

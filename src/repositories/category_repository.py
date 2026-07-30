@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from src.models.product import Category, CategoryCreate
 
 
@@ -18,11 +18,16 @@ class CategoryRepository:
         return db_category
 
     def get_all_categories(self) -> list[Category]:
-        return self.db.query(Category).all()
+        return (
+            self.db.query(Category)
+            .options(joinedload(Category.products))
+            .all()
+        )
 
     def get_category_by_id(self, category_id: int) -> Category | None:
         return (
             self.db.query(Category)
+            .options(joinedload(Category.products))
             .filter(Category.id == category_id)
             .first()
         )

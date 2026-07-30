@@ -76,7 +76,7 @@ class Product(Base):
     category_id = Column(
         Integer,
         ForeignKey("category.id", ondelete="SET NULL"),
-        nullable=True,
+        nullable=False,
         index=True,
     )
 

@@ -3,14 +3,22 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.database import engine, Base, SessionLocal
-# 1. Import BOTH models so SQLAlchemy creates both tables
-from src.models.product import Product, Category, ProductSchema, CategorySchema, CategoryCreate
-from src.repositories.product_repository import ProductRepository, ProductUpdateRepository
+from src.models.product import (
+    Product,
+    Category,
+    ProductSchema,
+    CategorySchema,
+    CategoryCreate,
+)
+from src.repositories.product_repository import (
+    ProductRepository,
+    ProductUpdateRepository,
+)
 from src.repositories.category_repository import CategoryRepository
 
 app = FastAPI()
 
-# Drop & create tables at startup (Day 3 pattern)
+# Drop & create tables at startup
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
@@ -40,10 +48,14 @@ def db_check(db: Session = Depends(get_db)):
 
 
 # ==========================================
-# CATEGORY ENDPOINTS (NEW)
+# CATEGORY ENDPOINTS
 # ==========================================
 
-@app.post("/categories", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/categories",
+    response_model=CategorySchema,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_category(category_data: CategoryCreate, db: Session = Depends(get_db)):
     repo = CategoryRepository(db)
     try:
@@ -75,15 +87,20 @@ def get_category_by_id(category_id: int, db: Session = Depends(get_db)):
 
 
 # ==========================================
-# PRODUCT ENDPOINTS (UPDATED WITH FK CHECK)
+# PRODUCT ENDPOINTS
 # ==========================================
 
-@app.post("/products", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/products",
+    response_model=ProductSchema,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
-    # 1. Validate that the referenced category exists BEFORE inserting
-    if product_data.category_id is not None:
+    # 1. Validate that referenced category exists only if category_id is a valid positive integer
+    if product_data.category_id is not None and product_data.category_id > 0:
         cat_repo = CategoryRepository(db)
-        if not cat_repo.get_category_by_id(product_data.category_id):
+        category = cat_repo.get_category_by_id(product_data.category_id)
+        if not category:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Category with ID {product_data.category_id} does not exist",
@@ -92,7 +109,9 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
     # 2. Proceed with product creation
     repository = ProductRepository(db)
     try:
-        return repository.create_new_product(product_data)
+        new_product = repository.create_new_product(product_data)
+        db.expire_all()
+        return new_product
     except IntegrityError:
         db.rollback()
         raise HTTPException(
