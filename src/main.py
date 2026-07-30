@@ -158,12 +158,42 @@ def delete_product_by_id(product_id: int, db: Session = Depends(get_db)):
 @app.delete("/products/name/{product_name}")
 def delete_product_by_name(product_name: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
-    if not repository.delete_product_by_name(product_name):
+    cleaned_name = product_name.strip()
+
+    exact_product = repository.get_product_by_exact_name(cleaned_name)
+
+    if exact_product is not None:
+        repository.delete_product_by_name(cleaned_name)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # No exact match, so check whether the input partially matches products
+    matches = repository.search_products_by_name(cleaned_name)
+
+    if len(matches) > 1:
+        matching_names = [product.name for product in matches]
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product with name '{product_name}' was not found",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Multiple products match '{cleaned_name}': "
+                f"{', '.join(matching_names)}. "
+                "Enter the full product name to delete."
+            ),
         )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    if len(matches) == 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"'{cleaned_name}' partially matches '{matches[0].name}'. "
+                "Enter the full product name to delete."
+            ),
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Product with name '{cleaned_name}' was not found",
+    )
 
 
 @app.put("/products/{identifier}", response_model=ProductSchema)
