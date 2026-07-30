@@ -20,8 +20,7 @@ def header():
             "[italic]Inventory Management Terminal[/italic]",
             border_style="green",
         )
-    )
-   
+    ) 
 
 def menu():
     table = Table(title="Main Menu", border_style="green")
