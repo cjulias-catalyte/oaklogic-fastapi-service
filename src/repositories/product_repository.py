@@ -4,10 +4,9 @@ from src.models.product import Product, ProductSchema
 
 
 class ProductRepository:
-    """Repository for creating, retrieving, searching, and deleting products."""
-
+    """Repository for performing database operations on Product objects."""
     def __init__(self, db: Session):
-        """Initialize the repository with an active database session.
+        """Initialize the repository with a database session.
 
         Args:
             db: An active SQLAlchemy database session.
@@ -15,13 +14,13 @@ class ProductRepository:
         self.db = db
 
     def create_new_product(self, product_data: ProductSchema) -> Product:
-        """Create and save a new product in the database.
+        """Create and persist a new product in the database.
 
         Args:
-            product_data: Validated product data used to create the product.
+            product_data: The data required to create a new product.
 
         Returns:
-            The newly created Product database object.
+            The newly created Product instance.
         """
         db_product = Product(
             name=product_data.name,
@@ -29,7 +28,6 @@ class ProductRepository:
             cost_per_unit=product_data.cost_per_unit,
             price_per_unit=product_data.price_per_unit,
             quantity_in_stock=product_data.quantity_in_stock,
-            category_id=product_data.category_id,
         )
 
         self.db.add(db_product)
@@ -39,15 +37,15 @@ class ProductRepository:
         return db_product
 
     def get_all_products(self) -> list[Product]:
-        """Retrieve every product stored in the database.
+        """Retrieve all products from the database.
 
         Returns:
-            A list containing all Product objects.
+            A list of all Product objects.
         """
         return self.db.query(Product).all()
 
     def get_product_by_id(self, product_id: int) -> Product | None:
-        """Retrieve one product by its unique ID.
+        """Retrieve a product by its unique ID.
 
         Args:
             product_id: The ID of the product to retrieve.
@@ -55,50 +53,25 @@ class ProductRepository:
         Returns:
             The matching Product if found, otherwise None.
         """
-        return (
-            self.db.query(Product)
-            .filter(Product.id == product_id)
-            .first()
-        )
+        return self.db.query(Product).filter(Product.id == product_id).first()
 
     def get_product_by_name(self, product_name: str) -> Product | None:
-        """Retrieve one product using a case-insensitive exact name match.
+        """Retrieve a product by its name.
 
-        Leading and trailing spaces are removed before the query is run.
+        Performs a case-insensitive partial match on the product name.
 
         Args:
-            product_name: The full name of the product to retrieve.
+            product_name: The name or partial name of the product.
 
         Returns:
-            The matching Product if found, otherwise None.
+            The first matching Product if found, otherwise None.
         """
         return (
             self.db.query(Product)
-            .filter(Product.name.ilike(product_name.strip()))
+            .filter(Product.name.ilike(f"%{product_name}%"))
             .first()
         )
-
-    def get_product_by_exact_name(
-        self,
-        product_name: str,
-    ) -> Product | None:
-        """Retrieve one product using a case-insensitive exact name match.
-
-        This method is used when an operation, such as deletion, should only
-        occur when the complete product name is provided.
-
-        Args:
-            product_name: The complete product name.
-
-        Returns:
-            The matching Product if found, otherwise None.
-        """
-        return (
-            self.db.query(Product)
-            .filter(Product.name.ilike(product_name.strip()))
-            .first()
-        )
-
+    
     def search_products(
         self,
         name: str | None = None,
@@ -109,18 +82,15 @@ class ProductRepository:
     ) -> list[Product]:
         """Search for products using one or more optional filters.
 
-        Product names use a case-insensitive partial match. Units use a
-        case-insensitive match. Numeric fields require exact matches.
-
         Args:
-            name: Optional partial product name.
-            unit: Optional unit of measurement.
-            cost_per_unit: Optional exact cost per unit.
-            price_per_unit: Optional exact price per unit.
-            quantity_in_stock: Optional exact stock quantity.
+            name: Filter by product name (case-insensitive partial match).
+            unit: Filter by unit of measurement.
+            cost_per_unit: Filter by cost per unit.
+            price_per_unit: Filter by price per unit.
+            quantity_in_stock: Filter by quantity in stock.
 
         Returns:
-            A list of products matching all supplied filters.
+            A list of products matching the specified filters.
         """
         query = self.db.query(Product)
 
@@ -147,39 +117,14 @@ class ProductRepository:
 
         return query.all()
 
-    def search_products_by_name(
-        self,
-        product_name: str,
-    ) -> list[Product]:
-        """Find all products containing the supplied name text.
-
-        The search is case-insensitive and uses a partial name match.
-
-        Args:
-            product_name: A full or partial product name.
-
-        Returns:
-            A list of all products whose names contain the supplied text.
-        """
-        return (
-            self.db.query(Product)
-            .filter(
-                Product.name.ilike(
-                    f"%{product_name.strip()}%"
-                )
-            )
-            .all()
-        )
-
     def delete_product_by_id(self, product_id: int) -> bool:
-        """Delete a product using its unique ID.
+        """Delete a product by its unique ID.
 
         Args:
             product_id: The ID of the product to delete.
 
         Returns:
-            True if the product was found and deleted.
-            False if no matching product was found.
+            True if the product was deleted successfully, otherwise False.
         """
         product = self.get_product_by_id(product_id)
 
@@ -192,19 +137,15 @@ class ProductRepository:
         return True
 
     def delete_product_by_name(self, product_name: str) -> bool:
-        """Delete a product using its complete name.
-
-        The deletion uses a case-insensitive exact name match.
+        """Delete a product by its name.
 
         Args:
-            product_name: The complete name of the product to delete.
+            product_name: The name of the product to delete.
 
         Returns:
-            True if the product was found and deleted.
-            False if no matching product was found.
+            True if the product was deleted successfully, otherwise False.
         """
-        product = self.get_product_by_exact_name(product_name)
-
+        product = self.get_product_by_name(product_name)
         if product is None:
             return False
 
@@ -224,14 +165,13 @@ class ProductUpdateRepository:
         product_id: int | None = None,
         product_name: str | None = None,
     ) -> Product | None:
-        """Update an existing product by ID or name.
+        """Update an existing product by its ID or name.
 
-        Exactly one identifier should be provided. The method performs a full
-        update of the product's name, unit, cost, price, and stock quantity.
+        Exactly one of ``product_id`` or ``product_name`` must be provided.
 
         Args:
             db: An active SQLAlchemy database session.
-            product_data: Validated replacement data for the product.
+            product_data: The updated product data.
             product_id: The ID of the product to update.
             product_name: The name of the product to update.
 
@@ -239,7 +179,7 @@ class ProductUpdateRepository:
             The updated Product if found, otherwise None.
 
         Raises:
-            ValueError: If both product_id and product_name are provided.
+            ValueError: If both ``product_id`` and ``product_name`` are provided.
         """
         if product_id is not None and product_name is not None:
             raise ValueError(
@@ -276,5 +216,4 @@ class ProductUpdateRepository:
 
         db.commit()
         db.refresh(product)
-
         return product

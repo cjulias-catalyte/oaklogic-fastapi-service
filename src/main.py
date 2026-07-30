@@ -16,6 +16,14 @@ Base.metadata.create_all(bind=engine)
 
 
 def get_db():
+    """Provide a database session for each request.
+
+    Yields:
+        Session: An active SQLAlchemy database session.
+
+    Ensures:
+        The database session is closed after the request is completed.
+    """
     db = SessionLocal()
     try:
         yield db
@@ -25,16 +33,37 @@ def get_db():
 
 @app.get("/")
 def root():
+    """Return a welcome message.
+
+    Returns:
+        A simple greeting indicating that the API is running.
+    """
     return {"message": "Hello World"}
 
 
 @app.get("/hello/{name}")
 def say_hello(name: str):
+    """Return a personalized greeting.
+
+    Args:
+        name: The name to include in the greeting.
+
+    Returns:
+        A greeting message containing the provided name.
+    """
     return {"message": f"Hello, {name}!"}
 
 
 @app.get("/db-check")
 def db_check(db: Session = Depends(get_db)):
+    """Verify the database connection.
+
+    Args:
+        db: The active database session.
+
+    Returns:
+        The current number of products stored in the database.
+    """
     count = db.query(Product).count()
     return {"product_count": count}
 
@@ -45,6 +74,18 @@ def db_check(db: Session = Depends(get_db)):
 
 @app.post("/categories", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
 def create_category(category_data: CategoryCreate, db: Session = Depends(get_db)):
+    """Create a new category.
+
+    Args:
+        category_data: The category information to create.
+        db: The active database session.
+
+    Returns:
+        The newly created category.
+
+    Raises:
+        HTTPException: If a category with the same name already exists.
+    """
     repo = CategoryRepository(db)
     try:
         return repo.create_category(category_data)
@@ -58,12 +99,32 @@ def create_category(category_data: CategoryCreate, db: Session = Depends(get_db)
 
 @app.get("/categories", response_model=list[CategorySchema])
 def get_categories(db: Session = Depends(get_db)):
+    """Retrieve all categories.
+
+    Args:
+        db: The active database session.
+
+    Returns:
+        A list of all categories.
+    """
     repo = CategoryRepository(db)
     return repo.get_all_categories()
 
 
 @app.get("/categories/{category_id}", response_model=CategorySchema)
 def get_category_by_id(category_id: int, db: Session = Depends(get_db)):
+    """Retrieve a category by its ID.
+
+    Args:
+        category_id: The ID of the category.
+        db: The active database session.
+
+    Returns:
+        The matching category.
+
+    Raises:
+        HTTPException: If the category does not exist.
+    """
     repo = CategoryRepository(db)
     category = repo.get_category_by_id(category_id)
     if category is None:
@@ -80,6 +141,20 @@ def get_category_by_id(category_id: int, db: Session = Depends(get_db)):
 
 @app.post("/products", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
+    """Create a new product.
+
+    Validates that the referenced category exists before creating the product.
+
+    Args:
+        product_data: The product information.
+        db: The active database session.
+
+    Returns:
+        The newly created product.
+
+    Raises:
+        HTTPException: If the category does not exist or the product already exists.
+    """
     # 1. Validate that the referenced category exists BEFORE inserting
     if product_data.category_id is not None:
         cat_repo = CategoryRepository(db)
@@ -103,12 +178,35 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 
 @app.get("/products", response_model=list[ProductSchema])
 def get_products(db: Session = Depends(get_db)):
+    """Retrieve all products.
+
+    Args:
+        db: The active database session.
+
+    Returns:
+        A list of all products.
+    """
     repository = ProductRepository(db)
     return repository.get_all_products()
 
 
 @app.get("/products/search/{identifier}", response_model=ProductSchema)
 def get_product(identifier: str, db: Session = Depends(get_db)):
+    """Retrieve a product by its ID or name.
+
+    If the identifier is numeric, it is treated as a product ID.
+    Otherwise, it is treated as a product name.
+
+    Args:
+        identifier: The product ID or name.
+        db: The active database session.
+
+    Returns:
+        The matching product.
+
+    Raises:
+        HTTPException: If no matching product is found.
+    """
     repository = ProductRepository(db)
 
     if identifier.isdigit():
@@ -134,6 +232,19 @@ def filter_products(
     quantity_in_stock: float | None = None,
     db: Session = Depends(get_db),
 ):
+    """Filter products using one or more optional criteria.
+
+    Args:
+        name: Product name filter.
+        unit: Unit of measurement filter.
+        cost_per_unit: Cost per unit filter.
+        price_per_unit: Price per unit filter.
+        quantity_in_stock: Quantity in stock filter.
+        db: The active database session.
+
+    Returns:
+        A list of products matching the specified filters.
+    """
     repository = ProductRepository(db)
     return repository.search_products(
         name=name,
@@ -146,6 +257,18 @@ def filter_products(
 
 @app.delete("/products/{product_id}")
 def delete_product_by_id(product_id: int, db: Session = Depends(get_db)):
+    """Delete a product by its ID.
+
+    Args:
+        product_id: The ID of the product to delete.
+        db: The active database session.
+
+    Returns:
+        A 204 No Content response.
+
+    Raises:
+        HTTPException: If the product does not exist.
+    """
     repository = ProductRepository(db)
     if not repository.delete_product_by_id(product_id):
         raise HTTPException(
@@ -158,7 +281,20 @@ def delete_product_by_id(product_id: int, db: Session = Depends(get_db)):
 @app.delete("/products/name/{product_name}")
 def delete_product_by_name(product_name: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
-    cleaned_name = product_name.strip()
+    """Delete a product by its name.
+
+    Args:
+        product_name: The name of the product to delete.
+        db: The active database session.
+
+    Returns:
+        A 204 No Content response.
+
+    Raises:
+        HTTPException: If the product does not exist.
+    """
+    if not repository.delete_product_by_name(product_name):
+        cleaned_name = product_name.strip()
 
     exact_product = repository.get_product_by_exact_name(cleaned_name)
 
@@ -202,6 +338,22 @@ def update_product(
     product_data: ProductSchema,
     db: Session = Depends(get_db),
 ):
+    """Update an existing product by its ID or name.
+
+    If the identifier is numeric, it is treated as a product ID.
+    Otherwise, it is treated as a product name.
+
+    Args:
+        identifier: The product ID or name.
+        product_data: The updated product information.
+        db: The active database session.
+
+    Returns:
+        The updated product.
+
+    Raises:
+        HTTPException: If the product ID is invalid or the product is not found.
+    """
     repository = ProductUpdateRepository()
 
     if identifier.isdigit():
