@@ -47,10 +47,11 @@ def get_unique_name(prefix: str = "Plant") -> str:
 # ==========================================
 
 def test_create_product():
+    unique_name = get_unique_name("Basil Plant - 4in Pot")
     response = client.post(
         "/products",
         json={
-            "name": "Basil Plant - 4in Pot",
+            "name": unique_name,
             "unit": "each",
             "cost_per_unit": 1.75,
             "price_per_unit": 4.99,
@@ -59,7 +60,7 @@ def test_create_product():
     )
 
     assert response.status_code == 201
-    assert response.json()["name"] == "Basil Plant - 4in Pot"
+    assert response.json()["name"] == unique_name
 
 
 def test_create_product_invalid_price_type():
@@ -98,10 +99,11 @@ def test_create_product_no_data():
 
 
 def test_search_products_by_name():
+    unique_name = get_unique_name("Basil Plant - Search Pot")
     client.post(
         "/products",
         json={
-            "name": "Basil Plant - 4in Pot",
+            "name": unique_name,
             "unit": "each",
             "cost_per_unit": 1.75,
             "price_per_unit": 4.99,
@@ -109,14 +111,14 @@ def test_search_products_by_name():
         }
     )
 
-    response = client.get("/products/filter/?name=Basil")
+    response = client.get(f"/products/filter/?name={unique_name}")
 
     assert response.status_code == 200
 
     products = response.json()
 
     assert len(products) > 0
-    assert products[0]["name"] == "Basil Plant - 4in Pot"
+    assert products[0]["name"] == unique_name
 
 
 # ==========================================
@@ -207,7 +209,7 @@ def test_update_product_by_id():
     create_res = client.post(
         "/products",
         json={
-            "name": "Old Plant Name",
+            "name": get_unique_name("Old Plant Name"),
             "unit": "each",
             "cost_per_unit": 2.00,
             "price_per_unit": 5.00,
@@ -216,9 +218,10 @@ def test_update_product_by_id():
     )
     product_id = create_res.json()["id"]
 
+    updated_name = get_unique_name("Updated Plant Name")
     update_payload = {
         "id": product_id,
-        "name": "Updated Plant Name",
+        "name": updated_name,
         "unit": "each",
         "cost_per_unit": 2.50,
         "price_per_unit": 6.00,
@@ -227,7 +230,7 @@ def test_update_product_by_id():
 
     response = client.put(f"/products/{product_id}", json=update_payload)
     assert response.status_code == 200
-    assert response.json()["name"] == "Updated Plant Name"
+    assert response.json()["name"] == updated_name
     assert response.json()["cost_per_unit"] == 2.50
 
 
@@ -244,8 +247,9 @@ def test_update_product_by_name():
         }
     )
 
+    updated_name = get_unique_name("Updated Target Plant")
     update_payload = {
-        "name": "Updated Target Plant",
+        "name": updated_name,
         "unit": "pack",
         "cost_per_unit": 3.00,
         "price_per_unit": 7.00,
@@ -254,7 +258,7 @@ def test_update_product_by_name():
 
     response = client.put(f"/products/{name}", json=update_payload)
     assert response.status_code == 200
-    assert response.json()["name"] == "Updated Target Plant"
+    assert response.json()["name"] == updated_name
     assert response.json()["unit"] == "pack"
 
 
