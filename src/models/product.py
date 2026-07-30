@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from src.database import Base
 
@@ -7,6 +7,15 @@ from src.database import Base
 # ==========================================
 # PYDANTIC SCHEMAS
 # ==========================================
+class ProductCreate(BaseModel):
+    name: str
+    unit: str
+    cost_per_unit: float = Field(gt=0)
+    price_per_unit: float = Field(gt=0)
+    quantity_in_stock: float = Field(ge=0)
+    category_id: int | None = None
+
+
 class ProductSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -19,11 +28,27 @@ class ProductSchema(BaseModel):
     category_id: int | None = None
 
 
+class CategoryCreate(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class CategorySchema(BaseModel):
+    """Returns a category WITH its nested list of products."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description: str | None = None
+    products: list[ProductSchema] = []
+
+
 # ==========================================
 # SQLALCHEMY ORM MODELS
 # ==========================================
 class Category(Base):
-    __tablename__ = 'category'
+    __tablename__ = "category"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
@@ -38,7 +63,7 @@ class Category(Base):
 
 
 class Product(Base):
-    __tablename__ = 'product'
+    __tablename__ = "product"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
