@@ -3,13 +3,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.database import engine, Base, SessionLocal
-# 1. IMPORTANT: Import Product BEFORE calling create_all() so the table registers
-from src.models.product import Product, ProductSchema
+# 1. Import BOTH models so SQLAlchemy creates both tables
+from src.models.product import Product, Category, ProductSchema, CategorySchema, CategoryCreate
 from src.repositories.product_repository import ProductRepository, ProductUpdateRepository
+from src.repositories.category_repository import CategoryRepository
 
 app = FastAPI()
 
-# 2. Now SQLAlchemy knows about the Product table when this runs
+# Drop & create tables at startup (Day 3 pattern)
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 
@@ -37,8 +39,57 @@ def db_check(db: Session = Depends(get_db)):
     return {"product_count": count}
 
 
+# ==========================================
+# CATEGORY ENDPOINTS (NEW)
+# ==========================================
+
+@app.post("/categories", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
+def create_category(category_data: CategoryCreate, db: Session = Depends(get_db)):
+    repo = CategoryRepository(db)
+    try:
+        return repo.create_category(category_data)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Category '{category_data.name}' already exists",
+        )
+
+
+@app.get("/categories", response_model=list[CategorySchema])
+def get_categories(db: Session = Depends(get_db)):
+    repo = CategoryRepository(db)
+    return repo.get_all_categories()
+
+
+@app.get("/categories/{category_id}", response_model=CategorySchema)
+def get_category_by_id(category_id: int, db: Session = Depends(get_db)):
+    repo = CategoryRepository(db)
+    category = repo.get_category_by_id(category_id)
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with ID {category_id} was not found",
+        )
+    return category
+
+
+# ==========================================
+# PRODUCT ENDPOINTS (UPDATED WITH FK CHECK)
+# ==========================================
+
 @app.post("/products", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
 def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
+    # 1. Validate that the referenced category exists BEFORE inserting
+    if product_data.category_id is not None:
+        cat_repo = CategoryRepository(db)
+        if not cat_repo.get_category_by_id(product_data.category_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category with ID {product_data.category_id} does not exist",
+            )
+
+    # 2. Proceed with product creation
     repository = ProductRepository(db)
     try:
         return repository.create_new_product(product_data)
