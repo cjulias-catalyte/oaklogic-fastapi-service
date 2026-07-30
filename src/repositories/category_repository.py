@@ -30,4 +30,4 @@ class CategoryRepository:
             .options(joinedload(Category.products))
             .filter(Category.id == category_id)
             .first()
-        )
+        ) 

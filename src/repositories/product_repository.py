@@ -20,6 +20,15 @@ class ProductRepository:
             data["category_id"] = None
 
         db_product = Product(**data)
+    # def create_new_product(self, product_data: ProductSchema) -> Product:
+    #     db_product = Product(
+    #         name=product_data.name,
+    #         unit=product_data.unit,
+    #         cost_per_unit=product_data.cost_per_unit,
+    #         price_per_unit=product_data.price_per_unit,
+    #         quantity_in_stock=product_data.quantity_in_stock,
+    #         category_id=product_data.category_id,
+    #     )
         self.db.add(db_product)
         self.db.commit()
         self.db.refresh(db_product)
@@ -31,8 +40,20 @@ class ProductRepository:
     def get_product_by_id(self, product_id: int) -> Product | None:
         return self.db.query(Product).filter(Product.id == product_id).first()
 
-    def get_product_by_name(self, name: str) -> Product | None:
-        return self.db.query(Product).filter(Product.name == name).first()
+    def get_product_by_name(self, product_name: str) -> Product | None:
+        return (
+            self.db.query(Product)
+            .filter(Product.name.ilike(product_name.strip()))
+            .first()
+        )
+
+    def get_product_by_exact_name (self, product_name: str) -> Product | None:
+        return(
+            self.db.query(Product)
+            .filter(Product.name.ilike(product_name.strip()))
+            .first()
+        )
+    
 
     def search_products(
         self,
@@ -57,6 +78,17 @@ class ProductRepository:
 
         return query.all()
 
+    def search_products_by_name(self, product_name: str,) -> list[Product]:
+        return (
+        self.db.query(Product)
+        .filter(
+            Product.name.ilike(
+                f"%{product_name.strip()}%"
+            )
+        )
+        .all()
+    )
+    
     def delete_product_by_id(self, product_id: int) -> bool:
         product = self.get_product_by_id(product_id)
         if not product:
@@ -65,9 +97,9 @@ class ProductRepository:
         self.db.commit()
         return True
 
-    def delete_product_by_name(self, name: str) -> bool:
-        product = self.get_product_by_name(name)
-        if not product:
+    def delete_product_by_name(self, product_name: str) -> bool:
+        product = self.get_product_by_exact_name(product_name)
+        if product is None:
             return False
         self.db.delete(product)
         self.db.commit()
@@ -107,4 +139,4 @@ class ProductUpdateRepository:
 
         db.commit()
         db.refresh(product)
-        return product
+        return product 
