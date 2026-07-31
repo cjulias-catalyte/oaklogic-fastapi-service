@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.models.product import Product, ProductCreate, ProductSchema
@@ -28,6 +29,7 @@ class ProductRepository:
             cost_per_unit=product_data.cost_per_unit,
             price_per_unit=product_data.price_per_unit,
             quantity_in_stock=product_data.quantity_in_stock,
+            category_id=product_data.category_id
         )
 
         self.db.add(db_product)
@@ -71,15 +73,27 @@ class ProductRepository:
             .filter(Product.name.ilike(f"%{product_name}%"))
             .first()
         )
-    
+
+    def get_product_by_exact_name(self, product_name: str) -> Product | None:
+        """Retrieve a product using an exact, case-insensitive name match."""
+        cleaned_name = product_name.strip()
+        if not cleaned_name:
+            return None
+
+        return (
+            self.db.query(Product)
+            .filter(func.lower(Product.name) == cleaned_name.lower())
+            .first()
+        )
+
     def search_products(
-        self,
-        name: str | None = None,
-        unit: str | None = None,
-        cost_per_unit: float | None = None,
-        price_per_unit: float | None = None,
-        quantity_in_stock: float | None = None,
-    ) -> list[Product]:
+            self,
+            name: str | None = None,
+            unit: str | None = None,
+            cost_per_unit: float | None = None,
+            price_per_unit: float | None = None,
+            quantity_in_stock: float | None = None,
+        ) -> list[Product]:
         """Search for products using one or more optional filters.
 
         Args:
@@ -114,6 +128,22 @@ class ProductRepository:
             )
 
         return query.all()
+
+    def search_products_by_name(
+            self,
+            product_name: str,
+    ) -> list[Product]:
+        """Return products containing the provided name."""
+        if not product_name or not product_name.strip():
+            return []
+
+        cleaned_name = product_name.strip()
+
+        return (
+            self.db.query(Product)
+            .filter(Product.name.ilike(f"%{cleaned_name}%"))
+            .all()
+        )
 
     def delete_product_by_id(self, product_id: int) -> bool:
         """Delete a product by its unique ID.
@@ -181,6 +211,7 @@ class ProductUpdateRepository:
                 "Provide either product_id or product_name, not both"
             )
 
+        repo = ProductRepository(db)
         if product_id is not None:
             product = repo.get_product_by_id(product_id)
         elif product_name is not None:
@@ -204,3 +235,5 @@ class ProductUpdateRepository:
         db.commit()
         db.refresh(product)
         return product
+
+    
