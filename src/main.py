@@ -79,11 +79,27 @@ def get_category_by_id(category_id: int, db: Session = Depends(get_db)):
 # ==========================================
 
 @app.post("/products", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
-def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
+def create_product(product_data: ProductCreate, db: Session = Depends(get_db)):
+    """Create a new product.
+
+    Validates that the referenced category exists before creating the product.
+
+    Args:
+        product_data: The product information.
+        db: The active database session.
+
+    Returns:
+        The newly created product.
+
+    Raises:
+        HTTPException: If the category does not exist or the product already exists.
+    """
     # 1. Validate that the referenced category exists BEFORE inserting
     if product_data.category_id is not None:
         cat_repo = CategoryRepository(db)
-        if not cat_repo.get_category_by_id(product_data.category_id):
+        category = cat_repo.get_category_by_id(product_data.category_id)
+
+        if not category:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Category with ID {product_data.category_id} does not exist",
@@ -91,9 +107,19 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
 
     # 2. Proceed with product creation
     repository = ProductRepository(db)
+    existing_product = repository.get_product_by_exact_name(product_data.name)
+
+    if existing_product is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Product '{product_data.name}' already exists",
+    )
+
     try:
-        return repository.create_new_product(product_data)
-    except IntegrityError:
+        new_product = repository.create_new_product(product_data)
+        db.expire_all()
+        return new_product
+    except IntegrityError as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -158,7 +184,33 @@ def delete_product_by_id(product_id: int, db: Session = Depends(get_db)):
 @app.delete("/products/name/{product_name}")
 def delete_product_by_name(product_name: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
-    if not repository.delete_product_by_name(product_name):
+    cleaned_name = product_name.strip()
+
+    
+    exact_product = repository.get_product_by_exact_name(cleaned_name)
+    """Delete a product by its name.
+
+    Args:
+        product_name: The name of the product to delete.
+        db: The active database session.
+
+    Returns:
+        A 204 No Content response.
+
+    Raises:
+        HTTPException: If the product does not exist.
+    """
+
+    if exact_product is not None:
+        repository.delete_product_by_name(cleaned_name)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    # No exact match, so check whether the input partially matches products
+    matches = repository.search_products_by_name(cleaned_name)
+
+    if len(matches) > 1:
+        matching_names = [product.name for product in matches]
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product with name '{product_name}' was not found",
