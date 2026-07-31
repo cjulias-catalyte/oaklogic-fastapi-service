@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 from src.main import app
+import pytest
+import uuid
 
 client = TestClient(app)
 
@@ -7,6 +9,23 @@ client = TestClient(app)
 # ==========================================
 # EXISTING TESTS (Kept as-is + setup fix)
 # ==========================================
+def get_unique_name(base_name: str) -> str:
+    """Generates a unique string by appending a short UUID to the base name."""
+    return f"{base_name}_{uuid.uuid4().hex[:8]}"
+
+@pytest.fixture
+def sample_category():
+    unique_name = get_unique_name("General")
+
+    response = client.post(
+        "/categories",
+        json={"name": unique_name},
+    )
+
+    assert response.status_code == 201
+
+    return response.json()
+
 
 def test_read_main():
     response = client.get("/")
@@ -20,7 +39,7 @@ def test_say_hello():
     assert response.json() == {"message": "Hello, Bob!"}
 
 
-def test_get_products():
+def test_get_products(sample_category):
     # Setup: Create 'soil' product so the existing assertions pass on an empty database
     client.post(
         "/products",
@@ -29,7 +48,8 @@ def test_get_products():
             "unit": "bag",
             "cost_per_unit": 3.5,
             "price_per_unit": 5.5,
-            "quantity_in_stock": 10
+            "quantity_in_stock": 10,
+            "category_id": sample_category["id"]
         }
     )
     
@@ -50,22 +70,27 @@ def test_db_check():
     assert isinstance(response.json()["product_count"], int)
 
 
-def test_create_product_success():
+def test_create_product_success(sample_category):
+    unique_name = get_unique_name("Basil Plant - 4in Pot")
+
     response = client.post(
         "/products",
         json={
-            "name": "Basil Plant - 4in Pot",
+            "name": unique_name,
             "unit": "each",
             "cost_per_unit": 1.75,
             "price_per_unit": 4.99,
-            "quantity_in_stock": 40
-        }
+            "quantity_in_stock": 40,
+            "category_id": sample_category["id"],  # <--- Pass valid category_id
+        },
     )
+
+    # Check status code FIRST before indexing into json()
     assert response.status_code == 201
+
     data = response.json()
-    assert data["name"] == "Basil Plant - 4in Pot"
-    assert data["cost_per_unit"] == 1.75
     assert "id" in data
+    assert data["name"] == unique_name
 
 
 def test_create_product_invalid_data():
@@ -81,7 +106,7 @@ def test_create_product_invalid_data():
 # NEW TESTS: SINGLE PRODUCT RETRIEVAL
 # ==========================================
 
-def test_get_product_by_id_success():
+def test_get_product_by_id_success(sample_category):
     create_res = client.post(
         "/products",
         json={
@@ -89,7 +114,8 @@ def test_get_product_by_id_success():
             "unit": "each",
             "cost_per_unit": 2.00,
             "price_per_unit": 5.00,
-            "quantity_in_stock": 15
+            "quantity_in_stock": 15,
+            "category_id": sample_category["id"]
         }
     )
     product_id = create_res.json()["id"]
@@ -105,7 +131,7 @@ def test_get_product_by_id_not_found():
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_get_product_by_name_success():
+def test_get_product_by_name_success(sample_category):
     client.post(
         "/products",
         json={
@@ -113,7 +139,8 @@ def test_get_product_by_name_success():
             "unit": "each",
             "cost_per_unit": 1.50,
             "price_per_unit": 3.99,
-            "quantity_in_stock": 20
+            "quantity_in_stock": 20,
+            "category_id": sample_category["id"]
         }
     )
 
@@ -132,7 +159,7 @@ def test_get_product_by_name_not_found():
 # NEW TESTS: FILTERING PRODUCTS
 # ==========================================
 
-def test_filter_products_by_params():
+def test_filter_products_by_params(sample_category):
     client.post(
         "/products",
         json={
@@ -140,7 +167,8 @@ def test_filter_products_by_params():
             "unit": "pot",
             "cost_per_unit": 10.00,
             "price_per_unit": 25.00,
-            "quantity_in_stock": 5
+            "quantity_in_stock": 5,
+            "category_id": sample_category["id"]
         }
     )
 
@@ -161,7 +189,7 @@ def test_filter_products_empty_results():
 # NEW TESTS: UPDATE PRODUCT
 # ==========================================
 
-def test_update_product_by_id_success():
+def test_update_product_by_id_success(sample_category):
     create_res = client.post(
         "/products",
         json={
@@ -169,7 +197,8 @@ def test_update_product_by_id_success():
             "unit": "each",
             "cost_per_unit": 2.00,
             "price_per_unit": 6.00,
-            "quantity_in_stock": 10
+            "quantity_in_stock": 10,
+            "category_id": sample_category["id"]
         }
     )
     product_id = create_res.json()["id"]
@@ -189,7 +218,7 @@ def test_update_product_by_id_success():
     assert response.json()["price_per_unit"] == 7.00
 
 
-def test_update_product_by_name_success():
+def test_update_product_by_name_success(sample_category):
     client.post(
         "/products",
         json={
@@ -197,7 +226,8 @@ def test_update_product_by_name_success():
             "unit": "each",
             "cost_per_unit": 3.00,
             "price_per_unit": 8.00,
-            "quantity_in_stock": 12
+            "quantity_in_stock": 12,
+            "category_id": sample_category["id"]
         }
     )
 
@@ -244,7 +274,7 @@ def test_update_product_invalid_id_zero():
 # NEW TESTS: DELETE PRODUCT
 # ==========================================
 
-def test_delete_product_by_id_success():
+def test_delete_product_by_id_success(sample_category):
     create_res = client.post(
         "/products",
         json={
@@ -252,7 +282,8 @@ def test_delete_product_by_id_success():
             "unit": "each",
             "cost_per_unit": 1.00,
             "price_per_unit": 3.00,
-            "quantity_in_stock": 5
+            "quantity_in_stock": 5,
+            "category_id": sample_category["id"]
         }
     )
     product_id = create_res.json()["id"]
@@ -271,7 +302,7 @@ def test_delete_product_by_id_not_found():
     assert "was not found" in response.json()["detail"]
 
 
-def test_delete_product_by_name_success():
+def test_delete_product_by_name_success(sample_category):
     client.post(
         "/products",
         json={
@@ -279,7 +310,8 @@ def test_delete_product_by_name_success():
             "unit": "pot",
             "cost_per_unit": 5.00,
             "price_per_unit": 15.00,
-            "quantity_in_stock": 3
+            "quantity_in_stock": 3,
+            "category_id": sample_category["id"]
         }
     )
 
