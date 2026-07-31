@@ -173,6 +173,7 @@ def create_product(product_data: ProductCreate, db: Session = Depends(get_db)):
     if product_data.category_id is not None:
         cat_repo = CategoryRepository(db)
         category = cat_repo.get_category_by_id(product_data.category_id)
+        
         if not category:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
