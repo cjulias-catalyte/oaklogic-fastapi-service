@@ -413,3 +413,40 @@ def update_product(
         )
 
     return product
+
+@app.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(category_id: int, db: Session = Depends(get_db)):
+    """Delete a category by its ID.
+
+    Only allowed if the category has no products assigned to it.
+
+    Args:
+        category_id: The ID of the category to delete.
+        db: The active database session.
+
+    Returns:
+        A 204 No Content response.
+
+    Raises:
+        HTTPException: If the category does not exist, or if it still has products.
+    """
+    repo = CategoryRepository(db)
+    category = repo.get_category_by_id(category_id)
+
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with ID {category_id} was not found",
+        )
+
+    if len(category.products) > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Category '{category.name}' has {len(category.products)} "
+                "product(s) assigned to it and cannot be deleted."
+            ),
+        )
+
+    repo.delete_category_by_id(category_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
