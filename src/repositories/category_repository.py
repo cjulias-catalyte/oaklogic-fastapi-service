@@ -25,9 +25,6 @@ class CategoryRepository:
             self.db.query(Category)
             .filter(Category.id == category_id)
             .first()
-<<<<<<< HEAD
-        )
-=======
         ) 
     
     def delete_category_by_id(self, category_id: int) -> Category | None:
@@ -47,4 +44,3 @@ class CategoryRepository:
         self.db.delete(category)
         self.db.commit()
         return category
->>>>>>> eb8cedaccb7909bdad3bdfe092b73b0636534680

@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.database import engine, Base, SessionLocal
 # 1. Import BOTH models so SQLAlchemy creates both tables
-from src.models.product import Product, Category, ProductSchema, CategorySchema, CategoryCreate
+from src.models.product import Product, Category, ProductSchema, CategorySchema, CategoryCreate, ProductCreate
 from src.repositories.product_repository import ProductRepository, ProductUpdateRepository
 from src.repositories.category_repository import CategoryRepository
 
