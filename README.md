@@ -701,3 +701,240 @@ Day 6 focused on making correctness verifiable and configuration portable, rathe
 - Automated tests turn "I checked it and it looked right" into a repeatable, objective check.
 - Secrets and environment-specific values don't belong in source code — they belong in an untracked `.env` file, with a checked-in example showing the shape without the values.
 - A change isn't verified until someone other than its author has run it successfully.
+
+---
+
+# Day 7: Modeling Relationships (Categories & Products)
+
+## Overview
+
+Day 7 introduces the first relationship between two tables: a one-to-many relationship between `Category` and `Product`. Each product now belongs to exactly one category, enforced by a foreign key at the database level — not just a naming convention or a Pydantic field. API responses also change shape for the first time: a category response returns nested product data, and a product response reflects its category's name rather than an opaque internal id.
+
+---
+
+## Goals
+
+- Organize products into categories (e.g. "Seeds," "Tools," "Fertilizer").
+- Require a valid category when creating a product, and reject the request if the category doesn't exist.
+- Retrieve a category along with the full list of products assigned to it.
+- Make product responses show meaningful category information, not just a raw `category_id`.
+
+---
+
+## Data Model
+
+**Which side owns the foreign key**
+
+`Product` owns the foreign key. A category can have many products, but each product belongs to exactly one category — so the foreign key (`category_id`) lives on the `product` table and references `category.id`. `Category` does not store any reference back to its products directly; that direction is resolved via SQLAlchemy's `relationship()`, not a second foreign key.
+
+**`Category` model**
+
+```python
+class Category(Base):
+    __tablename__ = 'category'
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+
+    products = relationship("Product", back_populates="category")
+```
+
+**Updated `Product` model**
+
+```python
+class Product(Base):
+    __tablename__ = 'product'
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    unit = Column(String, index=True)
+    cost_per_unit = Column(Float, index=True)
+    price_per_unit = Column(Float, index=True)
+    quantity_in_stock = Column(Float, index=True)
+    category_id = Column(Integer, ForeignKey("category.id"), nullable=False)
+
+    category = relationship("Category", back_populates="products")
+```
+
+`ForeignKey("category.id")` is what Postgres actually enforces — a product row can never be inserted with a `category_id` that doesn't correspond to a real row in `category`. `relationship()` is a SQLAlchemy-only convenience on top of that; it lets Python code navigate `product.category` or `category.products` without writing a join manually, but it isn't itself a database constraint.
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/categories` | Create a new category |
+| GET | `/categories/{category_id}` | Retrieve a category along with all of its products |
+| POST | `/products` | Create a product; now requires a `category_id` |
+
+---
+
+## Endpoint Specifications
+
+### Create Category
+
+**Endpoint**
+
+```
+POST /categories
+```
+
+**Request Body**
+
+```json
+{
+  "name": "Seeds"
+}
+```
+
+**Success Response**
+
+- Status Code: `201 Created`
+- Returns the created category using `CategorySchema`.
+
+---
+
+### Create Product (Updated)
+
+**Endpoint**
+
+```
+POST /products
+```
+
+**Request Body**
+
+The request body now includes `category_id` alongside the existing fields:
+
+```json
+{
+  "name": "Basil Plant - 4in Pot",
+  "unit": "each",
+  "cost_per_unit": 1.75,
+  "price_per_unit": 4.99,
+  "quantity_in_stock": 40,
+  "category_id": 1
+}
+```
+
+**Success Response**
+
+- Status Code: `201 Created`
+- Returns the created product using `ProductSchema`, which now includes category information (see schema section below) rather than just `category_id`.
+
+**Failure — Category Doesn't Exist**
+
+- Status Code: `404 Not Found`
+- Body:
+  ```json
+  { "detail": "Category with id 1 was not found" }
+  ```
+- The route checks that the referenced category exists via the repository **before** attempting to insert the product, and raises `HTTPException(404, ...)` if it doesn't. This is a deliberate application-level check, not just a database-level failure — it lets the client get a clear `404` instead of a raw foreign-key-violation error surfaced from Postgres.
+
+---
+
+### Retrieve Category With Products
+
+**Endpoint**
+
+```
+GET /categories/{category_id}
+```
+
+**Success Response**
+
+- Status Code: `200 OK`
+- Returns the category along with a nested list of its products:
+
+```json
+{
+  "id": 1,
+  "name": "Seeds",
+  "products": [
+    {
+      "id": 12,
+      "name": "Basil Plant - 4in Pot",
+      "unit": "each",
+      "cost_per_unit": 1.75,
+      "price_per_unit": 4.99,
+      "quantity_in_stock": 40
+    },
+    {
+      "id": 13,
+      "name": "Tomato Plant - 4in Pot",
+      "unit": "each",
+      "cost_per_unit": 1.75,
+      "price_per_unit": 5.49,
+      "quantity_in_stock": 22
+    }
+  ]
+}
+```
+
+**Failure — Category Doesn't Exist**
+
+- Status Code: `404 Not Found`
+- Body:
+  ```json
+  { "detail": "Category not found" }
+  ```
+
+---
+
+## Pydantic Schemas
+
+Two different "shapes" of product are needed depending on context, so a single `ProductSchema` isn't enough on its own:
+
+- **`ProductNested`** — a stripped-down product shape used *inside* a category response. Deliberately excludes `category_id` and any category details, since a product listed under its own category doesn't need to re-state which category it belongs to.
+
+  ```python
+  class ProductNested(BaseModel):
+      id: int
+      name: str
+      unit: str
+      cost_per_unit: float
+      price_per_unit: float
+      quantity_in_stock: float
+  ```
+
+- **`CategorySchema`** — the parent shape, embedding a list of `ProductNested`:
+
+  ```python
+  class CategorySchema(BaseModel):
+      id: int
+      name: str
+      products: list[ProductNested] = []
+  ```
+
+- **`ProductSchema`** (updated) — the shape used when a product is retrieved or created on its own, now surfacing the category's *name* instead of just its id, so a client doesn't need a second lookup to know what category a product belongs to:
+
+  ```python
+  class ProductSchema(BaseModel):
+      id: int | None = None
+      name: str
+      unit: str
+      cost_per_unit: float = Field(gt=0)
+      price_per_unit: float = Field(gt=0)
+      quantity_in_stock: float = Field(ge=0)
+      category_id: int
+      category_name: str | None = None
+  ```
+
+The reason for the split: nesting the *full* `ProductSchema` (including `category_id` and `category_name`) inside a `CategorySchema` response would be redundant and slightly circular — every product in the list would repeat the same category name back to the client that just asked for that category. A separate, leaner `ProductNested` schema avoids that repetition while still reusing the same underlying `Product` database rows.
+
+---
+
+## Where Each Failure Is Caught
+
+| Failure | Layer | Mechanism |
+|---|---|---|
+| Product created referencing a category id that doesn't exist | FastAPI route | Manual check against the repository before insert, raises `HTTPException(404, ...)` |
+| Category id not found on `GET /categories/{category_id}` | FastAPI route | Manual `if category is None:` check, raises `HTTPException(404, ...)` |
+| Missing or malformed `category_id` (wrong type, missing field) | Pydantic schema | Automatic `422`, request never reaches the route |
+
+---
+
+## Regression Note
+
+Adding the `Category` relationship required updating `ProductSchema` and the product creation flow, so all existing Day 4–6 endpoints and tests were re-verified after this change: create, read, update, delete, not-found handling, and validation rules all continue to work with the new required `category_id` field factored in.

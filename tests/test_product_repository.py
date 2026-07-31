@@ -46,7 +46,12 @@ def get_unique_name(prefix: str = "Plant") -> str:
 # EXISTING TESTS (Kept as-is, routes aligned)
 # ==========================================
 
-def test_create_product():
+@pytest.fixture
+def sample_category():
+    response = client.post("/categories", json={"name": "General"})
+    return response.json()
+
+def test_create_product(sample_category):
     unique_name = get_unique_name("Basil Plant - 4in Pot")
     response = client.post(
         "/products",
@@ -55,7 +60,8 @@ def test_create_product():
             "unit": "each",
             "cost_per_unit": 1.75,
             "price_per_unit": 4.99,
-            "quantity_in_stock": 40
+            "quantity_in_stock": 40,
+            "category_id": sample_category["id"]
         }
     )
 
@@ -98,7 +104,7 @@ def test_create_product_no_data():
     assert response.status_code == 422
 
 
-def test_search_products_by_name():
+def test_search_products_by_name(sample_category,):
     unique_name = get_unique_name("Basil Plant - Search Pot")
     client.post(
         "/products",
@@ -107,7 +113,8 @@ def test_search_products_by_name():
             "unit": "each",
             "cost_per_unit": 1.75,
             "price_per_unit": 4.99,
-            "quantity_in_stock": 40
+            "quantity_in_stock": 40,
+            "category_id": sample_category["id"]
         }
     )
 
@@ -132,7 +139,7 @@ def test_get_all_products():
     assert isinstance(response.json(), list)
 
 
-def test_get_product_by_id_success():
+def test_get_product_by_id_success(sample_category,):
     create_res = client.post(
         "/products",
         json={
@@ -140,7 +147,8 @@ def test_get_product_by_id_success():
             "unit": "each",
             "cost_per_unit": 1.50,
             "price_per_unit": 3.99,
-            "quantity_in_stock": 25
+            "quantity_in_stock": 25,
+            "category_id": sample_category["id"]
         }
     )
     product_id = create_res.json()["id"]
@@ -155,7 +163,7 @@ def test_get_product_by_id_not_found():
     assert response.status_code == 404
 
 
-def test_get_product_by_name_success():
+def test_get_product_by_name_success(sample_category,):
     name = get_unique_name("Mint Plant")
     client.post(
         "/products",
@@ -164,7 +172,8 @@ def test_get_product_by_name_success():
             "unit": "each",
             "cost_per_unit": 1.00,
             "price_per_unit": 2.99,
-            "quantity_in_stock": 15
+            "quantity_in_stock": 15,
+            "category_id": sample_category["id"]
         }
     )
 
@@ -178,7 +187,7 @@ def test_get_product_by_name_not_found():
     assert response.status_code == 404
 
 
-def test_search_products_multi_params():
+def test_search_products_multi_params(sample_category,):
     client.post(
         "/products",
         json={
@@ -186,7 +195,8 @@ def test_search_products_multi_params():
             "unit": "each",
             "cost_per_unit": 1.75,
             "price_per_unit": 4.99,
-            "quantity_in_stock": 10
+            "quantity_in_stock": 10,
+            "category_id": sample_category["id"]
         }
     )
     response = client.get("/products/filter/?unit=each&cost_per_unit=1.75")
@@ -205,7 +215,7 @@ def test_search_products_empty_results():
 # NEW TESTS: UPDATE METHODS
 # ==========================================
 
-def test_update_product_by_id():
+def test_update_product_by_id(sample_category,):
     create_res = client.post(
         "/products",
         json={
@@ -213,7 +223,8 @@ def test_update_product_by_id():
             "unit": "each",
             "cost_per_unit": 2.00,
             "price_per_unit": 5.00,
-            "quantity_in_stock": 10
+            "quantity_in_stock": 10,
+            "category_id": sample_category["id"]
         }
     )
     product_id = create_res.json()["id"]
@@ -234,7 +245,7 @@ def test_update_product_by_id():
     assert response.json()["cost_per_unit"] == 2.50
 
 
-def test_update_product_by_name():
+def test_update_product_by_name(sample_category,):
     name = get_unique_name("Target Plant")
     client.post(
         "/products",
@@ -243,7 +254,8 @@ def test_update_product_by_name():
             "unit": "each",
             "cost_per_unit": 2.00,
             "price_per_unit": 5.00,
-            "quantity_in_stock": 10
+            "quantity_in_stock": 10,
+            "category_id": sample_category["id"]
         }
     )
 
@@ -290,7 +302,7 @@ def test_update_product_invalid_id():
 # NEW TESTS: DELETE METHODS
 # ==========================================
 
-def test_delete_product_by_id():
+def test_delete_product_by_id(sample_category,):
     create_res = client.post(
         "/products",
         json={
@@ -298,7 +310,8 @@ def test_delete_product_by_id():
             "unit": "each",
             "cost_per_unit": 1.00,
             "price_per_unit": 2.00,
-            "quantity_in_stock": 5
+            "quantity_in_stock": 5,
+            "category_id": sample_category["id"]
         }
     )
     product_id = create_res.json()["id"]
@@ -315,7 +328,7 @@ def test_delete_product_by_id_not_found():
     assert response.status_code == 404
 
 
-def test_delete_product_by_name():
+def test_delete_product_by_name(sample_category,):
     name = get_unique_name("Named Plant To Delete")
     client.post(
         "/products",
@@ -324,7 +337,8 @@ def test_delete_product_by_name():
             "unit": "each",
             "cost_per_unit": 1.00,
             "price_per_unit": 2.00,
-            "quantity_in_stock": 5
+            "quantity_in_stock": 5,
+            "category_id": sample_category["id"]
         }
     )
 

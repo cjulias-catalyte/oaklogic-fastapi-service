@@ -25,4 +25,26 @@ class CategoryRepository:
             self.db.query(Category)
             .filter(Category.id == category_id)
             .first()
+<<<<<<< HEAD
         )
+=======
+        ) 
+    
+    def delete_category_by_id(self, category_id: int) -> Category | None:
+        """Delete a category by its ID.
+
+        Args:
+            category_id: The ID of the category to delete.
+
+        Returns:
+            The deleted Category if it existed, otherwise None.
+        """
+        category = self.db.query(Category).filter(Category.id == category_id).first()
+
+        if category is None:
+            return None
+
+        self.db.delete(category)
+        self.db.commit()
+        return category
+>>>>>>> eb8cedaccb7909bdad3bdfe092b73b0636534680

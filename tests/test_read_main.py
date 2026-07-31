@@ -15,6 +15,18 @@ from src.main import app, get_db
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+@pytest.fixture
+def sample_category():
+    unique_name = get_unique_name("General")
+
+    response = client.post(
+        "/categories",
+        json={"name": unique_name},
+    )
+
+    assert response.status_code == 201
+
+    return response.json()
 
 def override_get_db():
     try:
@@ -64,9 +76,10 @@ def test_db_check():
     assert response.json()["product_count"] == 0
 
 
-def test_get_products():
+def test_get_products(sample_category):
     unique_name = get_unique_name("soil")
-    client.post(
+
+    create_response = client.post(
         "/products",
         json={
             "name": unique_name,
@@ -74,11 +87,15 @@ def test_get_products():
             "cost_per_unit": 3.5,
             "price_per_unit": 5.5,
             "quantity_in_stock": 10,
+            "category_id": sample_category["id"],
         },
     )
 
+    assert create_response.status_code == 201, create_response.text
+
     response = client.get("/products")
     assert response.status_code == 200
+
     names = [p["name"] for p in response.json()]
     assert unique_name in names
 
@@ -88,7 +105,7 @@ def test_get_products():
 # ==========================================
 
 
-def test_get_product_by_id_success():
+def test_get_product_by_id_success(sample_category):
     unique_name = get_unique_name("Tomato")
     create_res = client.post(
         "/products",
@@ -98,6 +115,7 @@ def test_get_product_by_id_success():
             "cost_per_unit": 2.00,
             "price_per_unit": 5.00,
             "quantity_in_stock": 15,
+            "category_id": sample_category["id"]
         },
     )
     product_id = create_res.json()["id"]
@@ -114,7 +132,7 @@ def test_get_product_by_id_not_found():
     assert "not found" in response.json()["detail"].lower()
 
 
-def test_get_product_by_name_success():
+def test_get_product_by_name_success(sample_category):
     unique_name = get_unique_name("Mint")
     client.post(
         "/products",
@@ -124,6 +142,7 @@ def test_get_product_by_name_success():
             "cost_per_unit": 1.50,
             "price_per_unit": 3.99,
             "quantity_in_stock": 20,
+            "category_id": sample_category["id"]
         },
     )
 
@@ -143,7 +162,7 @@ def test_get_product_by_name_not_found():
 # ==========================================
 
 
-def test_filter_products_by_params():
+def test_filter_products_by_params(sample_category):
     unique_name = get_unique_name("Rose")
     client.post(
         "/products",
@@ -153,6 +172,7 @@ def test_filter_products_by_params():
             "cost_per_unit": 10.00,
             "price_per_unit": 25.00,
             "quantity_in_stock": 5,
+            "category_id": sample_category["id"]
         },
     )
 

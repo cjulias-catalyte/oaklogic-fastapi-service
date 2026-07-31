@@ -38,12 +38,7 @@ class Colors:
     BG_GREEN = "\033[42m"
 
 
-WIDTH = 78
-
-
-class CancelActionException(Exception):
-    """Exception raised when a user cancels an operation to return to the main menu."""
-    pass
+WIDTH = 64
 
 
 def enable_windows_ansi() -> None:
@@ -622,82 +617,164 @@ def filter_products() -> None:
     finally:
         db.close()
 
-
-def update_product() -> None:
-    """Update an existing product by ID or Name."""
+def update_products() -> None:
+    """Update an existing product."""
     clear_screen()
-    print_box_title("✏️ UPDATE PRODUCT", "Modify existing inventory details")
+    print_box_title(
+        "🪴 UPDATE PRODUCT",
+        "Update a product in the inventory",
+    )
 
-    identifier = read_nonempty("\nEnter Product ID or Exact Name to Update: ")
-
-    spinner("Locating product record")
     db = SessionLocal()
+
     try:
-        product_repo = ProductRepository(db)
+        repository = ProductRepository(db)
+        products = repository.get_all_products()
 
-        if identifier.isdigit():
-            product = product_repo.get_product_by_id(int(identifier))
-        else:
-            product = product_repo.get_product_by_name(identifier)
-
-        if not product:
-            print_error(f"Product '{identifier}' was not found.")
+        if not products:
+            print_warning("Create at least one product before updating.")
             return
 
-        print_section("CURRENT PRODUCT DETAILS")
+        print_section("AVAILABLE PRODUCTS")
+        display_products(products, get_category_map(db))
+
+        product_id = read_int(
+            "\nEnter the Product ID to Update: ",
+            minimum=1,
+        )
+
+        product = repository.get_product_by_id(product_id)
+
+        if product is None:
+            print_error(f"Product with ID {product_id} was not found.")
+            return
+
+        print_section("CURRENT PRODUCT INFORMATION")
         display_products([product], get_category_map(db))
 
-        print_section("ENTER UPDATED VALUES (Press Enter to keep current value)")
+        print_info("Press Enter to keep the current value.")
 
-        new_name = read_optional_text("Product Name ...........", default=product.name)
-        new_unit = read_optional_text("Unit ...................", default=product.unit)
-        new_cost = read_positive_float("Cost Per Unit ..........", default=product.cost_per_unit)
-        new_price = read_positive_float("Price Per Unit .........", default=product.price_per_unit)
-        new_stock = read_float("Quantity In Stock ...... ", minimum=0, default=product.quantity_in_stock)
-        new_cat_id = read_int("Category ID .............", minimum=1, default=product.category_id or 1)
+        new_name = input(
+            colored(
+                f"\nName [{product.name}] ...........: ",
+                Colors.WHITE,
+            )
+        ).strip()
 
-        # Check Category Exists
-        cat_repo = CategoryRepository(db)
-        if not cat_repo.get_category_by_id(new_cat_id):
-            print_error(f"Category with ID {new_cat_id} does not exist.")
+        new_unit = input(
+            colored(
+                f"Unit [{product.unit}] ............: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        new_cost = input(
+            colored(
+                f"Cost Per Unit [{product.cost_per_unit:.2f}] ...: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        new_price = input(
+            colored(
+                f"Price Per Unit [{product.price_per_unit:.2f}] .: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        new_quantity = input(
+            colored(
+                f"Quantity [{product.quantity_in_stock:.2f}] .......: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        try:
+            updated_cost = (
+                float(Decimal(new_cost))
+                if new_cost
+                else product.cost_per_unit
+            )
+
+            updated_price = (
+                float(Decimal(new_price))
+                if new_price
+                else product.price_per_unit
+            )
+
+            updated_quantity = (
+                float(Decimal(new_quantity))
+                if new_quantity
+                else product.quantity_in_stock
+            )
+
+        except (InvalidOperation, ValueError):
+            print_error("Cost, price, and quantity must be valid numbers.")
             return
 
-        if not confirm("Save updates to this product?"):
+        if updated_cost <= 0:
+            print_error("Cost per unit must be greater than 0.")
+            return
+
+        if updated_price <= 0:
+            print_error("Price per unit must be greater than 0.")
+            return
+
+        if updated_quantity < 0:
+            print_error("Quantity in stock cannot be negative.")
+            return
+
+        updated_name = new_name or product.name
+        updated_unit = new_unit or product.unit
+
+        existing_product = repository.get_product_by_exact_name(updated_name)
+
+        if (
+            existing_product is not None
+            and existing_product.id != product.id
+        ):
+            print_error(
+                f"A different product named '{updated_name}' already exists."
+            )
+            return
+
+        print_section("CONFIRM PRODUCT UPDATE")
+        print(f"Product ID ..............: {product.id}")
+        print(f"Name ....................: {updated_name}")
+        print(f"Unit ....................: {updated_unit}")
+        print(f"Cost Per Unit ...........: {format_money(updated_cost)}")
+        print(f"Price Per Unit ..........: {format_money(updated_price)}")
+        print(f"Quantity In Stock .......: {updated_quantity:.2f}")
+
+        if not confirm("\nUpdate this product?"):
             print_warning("Product update cancelled.")
             return
 
-        update_payload = ProductSchema(
-            id=product.id,
-            name=new_name,
-            unit=new_unit,
-            cost_per_unit=new_cost,
-            price_per_unit=new_price,
-            quantity_in_stock=new_stock,
-            category_id=new_cat_id,
-        )
+        product.name = updated_name
+        product.unit = updated_unit
+        product.cost_per_unit = updated_cost
+        product.price_per_unit = updated_price
+        product.quantity_in_stock = updated_quantity
 
-        spinner("Saving changes to database")
-        updater = ProductUpdateRepository()
-        updated_product = updater.update_product(
-            db=db,
-            product_data=update_payload,
-            product_id=product.id,
-        )
+        db.commit()
+        db.refresh(product)
 
-        if updated_product:
-            print_success("Product updated successfully!")
-            print_section("NEW PRODUCT DETAILS")
-            display_products([updated_product], get_category_map(db))
-        else:
-            print_error("Failed to update product.")
+        print_success("Product updated successfully!")
 
-    except IntegrityError as e:
+        print_section("UPDATED PRODUCT")
+        display_products([product], get_category_map(db))
+
+    except IntegrityError as error:
         db.rollback()
-        print_error("Update failed due to database constraint.")
-        print_info(f"Details: {e.orig}")
+        print_error("The product could not be updated.")
+        print_info(f"Database details: {error.orig}")
+
+    except Exception:
+        db.rollback()
+        raise
+
     finally:
         db.close()
-
 
 def delete_product() -> None:
     """Delete a product by ID."""
@@ -752,8 +829,9 @@ def show_menu() -> None:
     print("    4. 📋 View Products")
     print("    5. 🔎 Search Products")
     print("    6. 🎯 Filter Products")
-    print("    7. ✏️ Update Product")
+    print("    7. 📋 Update Product")
     print("    8. 🗑 Delete Product")
+
 
     print()
     print(colored("  SYSTEM", Colors.YELLOW + Colors.BOLD))
@@ -772,7 +850,7 @@ def main() -> None:
         "4": list_products,
         "5": search_products,
         "6": filter_products,
-        "7": update_product,
+        "7": update_products,
         "8": delete_product,
     }
 
