@@ -29,7 +29,7 @@ class Colors:
     DIM = "\033[2m"
 
 
-WIDTH = 78
+WIDTH = 64
 
 
 def enable_windows_ansi() -> None:
@@ -491,6 +491,164 @@ def filter_products() -> None:
     finally:
         db.close()
 
+def update_products() -> None:
+    """Update an existing product."""
+    clear_screen()
+    print_box_title(
+        "🪴 UPDATE PRODUCT",
+        "Update a product in the inventory",
+    )
+
+    db = SessionLocal()
+
+    try:
+        repository = ProductRepository(db)
+        products = repository.get_all_products()
+
+        if not products:
+            print_warning("Create at least one product before updating.")
+            return
+
+        print_section("AVAILABLE PRODUCTS")
+        display_products(products, get_category_map(db))
+
+        product_id = read_int(
+            "\nEnter the Product ID to Update: ",
+            minimum=1,
+        )
+
+        product = repository.get_product_by_id(product_id)
+
+        if product is None:
+            print_error(f"Product with ID {product_id} was not found.")
+            return
+
+        print_section("CURRENT PRODUCT INFORMATION")
+        display_products([product], get_category_map(db))
+
+        print_info("Press Enter to keep the current value.")
+
+        new_name = input(
+            colored(
+                f"\nName [{product.name}] ...........: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        new_unit = input(
+            colored(
+                f"Unit [{product.unit}] ............: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        new_cost = input(
+            colored(
+                f"Cost Per Unit [{product.cost_per_unit:.2f}] ...: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        new_price = input(
+            colored(
+                f"Price Per Unit [{product.price_per_unit:.2f}] .: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        new_quantity = input(
+            colored(
+                f"Quantity [{product.quantity_in_stock:.2f}] .......: ",
+                Colors.WHITE,
+            )
+        ).strip()
+
+        try:
+            updated_cost = (
+                float(Decimal(new_cost))
+                if new_cost
+                else product.cost_per_unit
+            )
+
+            updated_price = (
+                float(Decimal(new_price))
+                if new_price
+                else product.price_per_unit
+            )
+
+            updated_quantity = (
+                float(Decimal(new_quantity))
+                if new_quantity
+                else product.quantity_in_stock
+            )
+
+        except (InvalidOperation, ValueError):
+            print_error("Cost, price, and quantity must be valid numbers.")
+            return
+
+        if updated_cost <= 0:
+            print_error("Cost per unit must be greater than 0.")
+            return
+
+        if updated_price <= 0:
+            print_error("Price per unit must be greater than 0.")
+            return
+
+        if updated_quantity < 0:
+            print_error("Quantity in stock cannot be negative.")
+            return
+
+        updated_name = new_name or product.name
+        updated_unit = new_unit or product.unit
+
+        existing_product = repository.get_product_by_exact_name(updated_name)
+
+        if (
+            existing_product is not None
+            and existing_product.id != product.id
+        ):
+            print_error(
+                f"A different product named '{updated_name}' already exists."
+            )
+            return
+
+        print_section("CONFIRM PRODUCT UPDATE")
+        print(f"Product ID ..............: {product.id}")
+        print(f"Name ....................: {updated_name}")
+        print(f"Unit ....................: {updated_unit}")
+        print(f"Cost Per Unit ...........: {format_money(updated_cost)}")
+        print(f"Price Per Unit ..........: {format_money(updated_price)}")
+        print(f"Quantity In Stock .......: {updated_quantity:.2f}")
+
+        if not confirm("\nUpdate this product?"):
+            print_warning("Product update cancelled.")
+            return
+
+        product.name = updated_name
+        product.unit = updated_unit
+        product.cost_per_unit = updated_cost
+        product.price_per_unit = updated_price
+        product.quantity_in_stock = updated_quantity
+
+        db.commit()
+        db.refresh(product)
+
+        print_success("Product updated successfully!")
+
+        print_section("UPDATED PRODUCT")
+        display_products([product], get_category_map(db))
+
+    except IntegrityError as error:
+        db.rollback()
+        print_error("The product could not be updated.")
+        print_info(f"Database details: {error.orig}")
+
+    except Exception:
+        db.rollback()
+        raise
+
+    finally:
+        db.close()
 
 def delete_product() -> None:
     """Delete a product by ID."""
@@ -543,11 +701,13 @@ def show_menu() -> None:
     print("    4. 📋 View Products")
     print("    5. 🔎 Search Products")
     print("    6. 🎯 Filter Products")
-    print("    7. 🗑 Delete Product")
+    print("    7. 📋 Update Product")
+    print("    8. 🗑 Delete Product")
+
 
     print()
     print(colored("  SYSTEM", Colors.YELLOW + Colors.BOLD))
-    print("    8. 🚪 Exit")
+    print("    9. 🚪 Exit")
 
     print()
     print(colored("═" * WIDTH, Colors.CYAN))
@@ -562,7 +722,8 @@ def main() -> None:
         "4": list_products,
         "5": search_products,
         "6": filter_products,
-        "7": delete_product,
+        "7": update_products,
+        "8": delete_product,
     }
 
     while True:
@@ -571,7 +732,7 @@ def main() -> None:
             colored("Select an option ➜ ", Colors.BOLD + Colors.WHITE)
         ).strip()
 
-        if choice == "8":
+        if choice == "9":
             clear_screen()
             print_box_title("🌿 THANK YOU 🌿", "Garden Shop session ended")
             print_success("Goodbye!")
