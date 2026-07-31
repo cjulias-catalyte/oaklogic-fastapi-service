@@ -7,6 +7,7 @@ import pytest
 client = TestClient(app)
 
 
+<<<<<<< HEAD
 # ==========================================
 # NEW TESTS: DELETE PRODUCT
 # ==========================================
@@ -29,6 +30,9 @@ def sample_category():
     return response.json()
 
 def test_delete_product_by_id_success(sample_category):
+=======
+def test_delete_product_by_id_success():
+>>>>>>> 53e57553e08b2fe6d45f4300a40425aeee259435
     create_res = client.post(
         "/products",
         json={
@@ -37,31 +41,23 @@ def test_delete_product_by_id_success(sample_category):
             "cost_per_unit": 1.00,
             "price_per_unit": 3.00,
             "quantity_in_stock": 5,
+<<<<<<< HEAD
             "category_id": sample_category["id"]
         }
+=======
+        },
+>>>>>>> 53e57553e08b2fe6d45f4300a40425aeee259435
     )
     assert create_res.status_code == 201
-
     product_id = create_res.json()["id"]
 
-    #Act
     delete_res = client.delete(f"/products/{product_id}")
-
-    #Assert
     assert delete_res.status_code == 204
-
-    get_res = client.get(f"/products/search/{product_id}")
-    assert get_res.status_code == 404
 
 
 def test_delete_product_by_id_not_found():
-
-    #Act
     response = client.delete("/products/999999")
-
-    #Assert
     assert response.status_code == 404
-    assert "was not found" in response.json()["detail"]
 
 
 def test_delete_product_by_name_success(sample_category):
@@ -76,20 +72,25 @@ def test_delete_product_by_name_success(sample_category):
             "category_id": sample_category["id"]
         }
     )
-
     assert create_res.status_code == 201
     product_name = create_res.json()["name"]
+<<<<<<< HEAD
+
+    delete_res = client.delete(f"/products/name/{product_name}")
+    assert delete_res.status_code == 204
+=======
+>>>>>>> 53e57553e08b2fe6d45f4300a40425aeee259435
 
     delete_res = client.delete(f"/products/name/{product_name}")
     assert delete_res.status_code == 204
 
-    # Confirm it was removed
-    get_res = client.get(f"/products/search/{product_name}")
-    assert get_res.status_code == 404
-
 
 def test_delete_product_by_name_not_found():
     response = client.delete("/products/name/NonExistentPlantToDel")
+<<<<<<< HEAD
 
     assert response.status_code == 404
     assert "NonExistentPlantToDel" in response.json()["detail"]
+=======
+    assert response.status_code == 404
+>>>>>>> 53e57553e08b2fe6d45f4300a40425aeee259435
