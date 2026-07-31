@@ -173,7 +173,7 @@ def create_product(product_data: ProductCreate, db: Session = Depends(get_db)):
     if product_data.category_id is not None:
         cat_repo = CategoryRepository(db)
         category = cat_repo.get_category_by_id(product_data.category_id)
-        
+
         if not category:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -312,6 +312,10 @@ def delete_product_by_id(product_id: int, db: Session = Depends(get_db)):
 @app.delete("/products/name/{product_name}")
 def delete_product_by_name(product_name: str, db: Session = Depends(get_db)):
     repository = ProductRepository(db)
+    cleaned_name = product_name.strip()
+
+    
+    exact_product = repository.get_product_by_exact_name(cleaned_name)
     """Delete a product by its name.
 
     Args:
@@ -324,10 +328,6 @@ def delete_product_by_name(product_name: str, db: Session = Depends(get_db)):
     Raises:
         HTTPException: If the product does not exist.
     """
-    if not repository.delete_product_by_name(product_name):
-        cleaned_name = product_name.strip()
-
-    exact_product = repository.get_product_by_exact_name(cleaned_name)
 
     if exact_product is not None:
         repository.delete_product_by_name(cleaned_name)
