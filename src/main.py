@@ -154,7 +154,7 @@ def get_category_by_id(category_id: int, db: Session = Depends(get_db)):
 # ==========================================
 
 @app.post("/products", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
-def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
+def create_product(product_data: ProductCreate, db: Session = Depends(get_db)):
     """Create a new product.
 
     Validates that the referenced category exists before creating the product.
@@ -180,6 +180,14 @@ def create_product(product_data: ProductSchema, db: Session = Depends(get_db)):
             )
 
     repository = ProductRepository(db)
+    existing_product = repository.get_product_by_exact_name(product_data.name)
+
+    if existing_product is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Product '{product_data.name}' already exists",
+    )
+
     try:
         new_product = repository.create_new_product(product_data)
         db.expire_all()
